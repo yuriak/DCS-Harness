@@ -53,6 +53,11 @@ class RuntimeRepository:
         )
         return path
 
+    def write_builtin_source(self, name: str, content: str) -> Path:
+        path = self.builtin / f"{name}.py"
+        path.write_text(content, encoding="utf-8")
+        return path
+
     def write_runtime(self, name: str, value: int = 1) -> Path:
         path = self.runtime / f"{name}.py"
         path.write_text(
@@ -104,7 +109,9 @@ class ResidentServerTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.repository = RuntimeRepository(Path(self.temporary.name))
         self.repository.write_builtin("alpha", 1)
-        self.server = CapabilityServer(self.repository.root, port=0)
+        self.server = CapabilityServer(
+            self.repository.root, port=0, autostart_plugins=()
+        )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.client = ServerClient(self.repository.root, timeout=1.0)
@@ -129,6 +136,12 @@ class ResidentServerTests(unittest.TestCase):
         self.assertEqual(self.state.host, "127.0.0.1")
         self.assertEqual(self.state.port, self.server.port)
         self.assertEqual(self.state.api_version, 1)
+        with urlopen(
+            f"http://{self.state.host}:{self.state.port}/health", timeout=1
+        ) as response:
+            health = json.loads(response.read())
+        self.assertEqual(health["runtime"]["mode"], "resident")
+        self.assertEqual(health["runtime"]["state"], "running")
 
     def test_invoke_uses_canonical_envelope_and_cache(self) -> None:
         first = self.client.invoke(
@@ -253,6 +266,68 @@ class BackendSelectionTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.meta["backend"], "direct")
 
+
+class ServerResidentLifecycleTests(unittest.TestCase):
+    def test_server_autostarts_and_stops_resident_plugin(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = RuntimeRepository(Path(temporary))
+            start_marker = repository.root / "resident-started"
+            stop_marker = repository.root / "resident-stopped"
+            repository.write_builtin_source(
+                "resident",
+                f'''\
+from pathlib import Path
+
+PLUGIN_NAME = "resident"
+PLUGIN_API_VERSION = 1
+PLUGIN_RUNTIME = "resident"
+PLUGIN_AUTOSTART = True
+
+def worker(stop_event):
+    stop_event.wait()
+
+def start(context, runtime):
+    Path({str(start_marker)!r}).write_text("started")
+    runtime.start_background("worker", worker)
+
+def invoke(context, command, args):
+    return {{"running": True}}
+
+def stop(context, runtime):
+    Path({str(stop_marker)!r}).write_text("stopped")
+''',
+            )
+            server = CapabilityServer(
+                repository.root,
+                port=0,
+                autostart_plugins=("resident",),
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            client = ServerClient(repository.root, timeout=1.0)
+            deadline = time.monotonic() + 3
+            while True:
+                try:
+                    state = client.health()
+                    break
+                except HarnessError:
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.01)
+            with urlopen(
+                f"http://{state.host}:{state.port}/health", timeout=1
+            ) as response:
+                health = json.loads(response.read())
+
+            server.shutdown()
+            thread.join(timeout=3)
+
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(start_marker.read_text(), "started")
+            self.assertEqual(stop_marker.read_text(), "stopped")
+            plugin = health["runtime"]["plugins"]["resident"]
+            self.assertEqual(plugin["state"], "running")
+            self.assertEqual(plugin["background_tasks"]["worker"]["state"], "running")
 
 if __name__ == "__main__":
     unittest.main()

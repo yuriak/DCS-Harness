@@ -32,7 +32,7 @@ from setup_support.outputs import (
 )
 
 
-SETUP_VERSION = "0.4.1"
+SETUP_VERSION = "0.6.0"
 MINIMUM_PYTHON = (3, 10)
 PYSOCKS_BOOTSTRAP_VERSION = "1.7.1"
 REQUIRED_SUBMODULES = (
@@ -425,6 +425,35 @@ def collect_submodule_metadata(repository_root: Path) -> dict[str, dict[str, obj
     return metadata
 
 
+def read_existing_client_host(environment_path: Path) -> str | None:
+    """Read the player-owned client host without requiring PyYAML at bootstrap."""
+    try:
+        content = environment_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    grpc_match = re.search(
+        r"(?ms)^grpc:\s*\n(?P<body>(?:^[ \t]+.*(?:\n|$))*)",
+        content,
+    )
+    if grpc_match is None:
+        return None
+    host_match = re.search(
+        r"(?m)^\s+client_host:\s*(?P<value>[^#\r\n]*?)\s*$",
+        grpc_match.group("body"),
+    )
+    if host_match is None:
+        return None
+    raw_value = host_match.group("value").strip()
+    if not raw_value or raw_value.lower() in {"null", "~"}:
+        return None
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        parsed = raw_value.strip("'\"")
+    return parsed if isinstance(parsed, str) and parsed.strip() else None
+
+
 def build_environment_data(
     *,
     repository_root: Path,
@@ -434,6 +463,7 @@ def build_environment_data(
     dcs_path: Path,
     saved_games_path: Path,
     grpc_inspection: GrpcInspection,
+    client_host: str = "127.0.0.1",
 ) -> dict[str, object]:
     venv_dir = repository_root / "runtime" / "venv"
     return {
@@ -459,7 +489,8 @@ def build_environment_data(
                 else None
             ),
             "version": grpc_inspection.version,
-            "host": grpc_inspection.host,
+            "bind_host": grpc_inspection.bind_host,
+            "client_host": client_host,
             "port": grpc_inspection.port,
             "eval_enabled": grpc_inspection.eval_enabled,
             "autostart": grpc_inspection.autostart,
@@ -673,14 +704,36 @@ def ensure_pip_socks_support(
     )
 
 
+def ensure_runtime_directories(repository_root: Path) -> CheckResult:
+    runtime_dir = repository_root / "runtime"
+    directories = (
+        runtime_dir / "generated" / "grpc",
+        runtime_dir / "logs",
+        runtime_dir / "workspace",
+        runtime_dir / "plugins" / "py",
+        runtime_dir / "plugins" / "lua",
+        runtime_dir / "memory",
+    )
+    try:
+        for path in directories:
+            path.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        return CheckResult(
+            "runtime_directories",
+            CheckStatus.ERROR,
+            f"Could not create runtime directories: {error}",
+        )
+    return CheckResult(
+        "runtime_directories",
+        CheckStatus.OK,
+        f"Runtime directories are ready under {runtime_dir}.",
+    )
+
+
 def prepare_runtime(repository_root: Path, dry_run: bool) -> list[CheckResult]:
     runtime_dir = repository_root / "runtime"
     venv_dir = runtime_dir / "venv"
     generated_dir = runtime_dir / "generated" / "grpc"
-    logs_dir = runtime_dir / "logs"
-    workspace_dir = runtime_dir / "workspace"
-    runtime_python_plugins = runtime_dir / "plugins" / "py"
-    runtime_lua_plugins = runtime_dir / "plugins" / "lua"
     python_executable = venv_python_path(venv_dir)
     fingerprint_file = venv_dir / ".dcs-harness-dependencies.sha256"
 
@@ -698,31 +751,10 @@ def prepare_runtime(repository_root: Path, dry_run: bool) -> list[CheckResult]:
             ),
         ]
 
-    try:
-        for path in (
-            generated_dir,
-            logs_dir,
-            workspace_dir,
-            runtime_python_plugins,
-            runtime_lua_plugins,
-        ):
-            path.mkdir(parents=True, exist_ok=True)
-    except OSError as error:
-        return [
-            CheckResult(
-                "runtime_directories",
-                CheckStatus.ERROR,
-                f"Could not create runtime directories: {error}",
-            )
-        ]
-
-    results = [
-        CheckResult(
-            "runtime_directories",
-            CheckStatus.OK,
-            f"Runtime directories are ready under {runtime_dir}.",
-        )
-    ]
+    directory_result = ensure_runtime_directories(repository_root)
+    if directory_result.status is CheckStatus.ERROR:
+        return [directory_result]
+    results = [directory_result]
 
     if not python_executable.is_file():
         print(f"Creating Python virtual environment at {venv_dir} ...", flush=True)
@@ -963,6 +995,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             dcs_path=dcs_path,
             saved_games_path=saved_games_path,
             grpc_inspection=grpc_inspection,
+            client_host=(
+                read_existing_client_host(environment_path) or "127.0.0.1"
+            ),
         )
         try:
             write_yaml(environment_path, environment)

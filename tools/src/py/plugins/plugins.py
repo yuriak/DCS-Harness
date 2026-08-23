@@ -50,22 +50,23 @@ def _argument(args: Mapping[str, Any], key: str) -> str:
 
 
 def invoke(context: Any, command: str, args: Mapping[str, Any]) -> Any:
-    resolver = context.resolver
-    if resolver is None:
+    runtime = context.runtime
+    if runtime is None:
         raise HarnessError(
             ErrorCode.INTERNAL_ERROR,
-            "Plugin resolver is unavailable in the shared context.",
+            "Capability runtime is unavailable in the shared context.",
         )
 
     if command == "list":
-        return resolver.discover()
+        return runtime.resolver.discover()
     if command == "describe":
         name = _argument(args, "name")
-        return resolver.describe(resolver.resolve(name))
+        metadata, _ = runtime.describe_plugin(name)
+        return metadata
     if command == "validate":
         target = _argument(args, "target")
-        spec = resolver.resolve_name_or_path(target)
-        loaded = resolver.load(spec)
+        loaded, _ = runtime.validate_plugin(target)
+        spec = loaded.spec
         return {
             "valid": True,
             "name": spec.name,

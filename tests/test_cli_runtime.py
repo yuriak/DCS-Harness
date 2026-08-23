@@ -12,9 +12,9 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SETUP_SOURCE = REPOSITORY_ROOT / "tools" / "src" / "py"
 sys.path.insert(0, str(SETUP_SOURCE))
 
-from dcs_harness_runtime.dispatcher import Dispatcher  # noqa: E402
 from dcs_harness import _running_in_runtime_venv  # noqa: E402
 from dcs_harness_runtime.plugin_api import PluginResolver, PluginSource  # noqa: E402
+from dcs_harness_runtime.resident import CapabilityRuntime  # noqa: E402
 from dcs_harness_runtime.result import ErrorCode, HarnessError  # noqa: E402
 
 
@@ -121,11 +121,8 @@ class LazyLoadingTests(unittest.TestCase):
             )
             repository.write_runtime("beta", beta)
 
-            dispatcher = Dispatcher(repository.root)
-            try:
-                result = dispatcher.dispatch("alpha", "ping")
-            finally:
-                dispatcher.close()
+            with CapabilityRuntime(repository.root, mode="direct") as runtime:
+                result = runtime.dispatch("alpha", "ping")
 
             self.assertTrue(result.ok)
             self.assertFalse(marker.exists())
@@ -141,11 +138,8 @@ class LazyLoadingTests(unittest.TestCase):
                     "raise RuntimeError('unrelated plugin was eagerly imported')\n",
                 )
 
-            dispatcher = Dispatcher(repository.root)
-            try:
-                result = dispatcher.dispatch("target", "ping")
-            finally:
-                dispatcher.close()
+            with CapabilityRuntime(repository.root, mode="direct") as runtime:
+                result = runtime.dispatch("target", "ping")
 
             self.assertTrue(result.ok)
 
@@ -174,6 +168,22 @@ class PluginContractTests(unittest.TestCase):
         error = self._load_error("PLUGIN_NAME = 'broken'\nPLUGIN_API_VERSION = 1\n")
         self.assertEqual(error.code, ErrorCode.PLUGIN_API_INCOMPATIBLE)
 
+    def test_invalid_runtime_kind(self) -> None:
+        error = self._load_error(
+            "PLUGIN_NAME = 'broken'\nPLUGIN_API_VERSION = 1\n"
+            "PLUGIN_RUNTIME = 'daemon'\n"
+            "def invoke(c, x, a): return {}\n"
+        )
+        self.assertEqual(error.code, ErrorCode.PLUGIN_API_INCOMPATIBLE)
+
+    def test_stateless_plugin_cannot_declare_lifecycle_hook(self) -> None:
+        error = self._load_error(
+            "PLUGIN_NAME = 'broken'\nPLUGIN_API_VERSION = 1\n"
+            "def start(c, r): pass\n"
+            "def invoke(c, x, a): return {}\n"
+        )
+        self.assertEqual(error.code, ErrorCode.PLUGIN_API_INCOMPATIBLE)
+
     def test_describe_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository = RuntimeRepository(Path(temporary))
@@ -189,13 +199,10 @@ class DispatcherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             repository = RuntimeRepository(Path(temporary))
             repository.write_builtin("alpha")
-            dispatcher = Dispatcher(repository.root)
-            try:
-                result = dispatcher.dispatch(
+            with CapabilityRuntime(repository.root, mode="direct") as runtime:
+                result = runtime.dispatch(
                     "alpha", "ping", {"secret_payload": "not-for-log"}
                 )
-            finally:
-                dispatcher.close()
 
             self.assertTrue(result.ok)
             self.assertEqual(result.meta["plugin_source"], "builtin")
@@ -210,11 +217,8 @@ class DispatcherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             repository = RuntimeRepository(Path(temporary))
             repository.write_builtin("alpha")
-            dispatcher = Dispatcher(repository.root)
-            try:
-                result = dispatcher.dispatch("alpha", "unknown")
-            finally:
-                dispatcher.close()
+            with CapabilityRuntime(repository.root, mode="direct") as runtime:
+                result = runtime.dispatch("alpha", "unknown")
         self.assertFalse(result.ok)
         self.assertEqual(result.error.code, ErrorCode.COMMAND_NOT_FOUND.value)
 
@@ -228,11 +232,8 @@ def invoke(context, command, args):
         with tempfile.TemporaryDirectory() as temporary:
             repository = RuntimeRepository(Path(temporary))
             repository.write_runtime("broken", content)
-            dispatcher = Dispatcher(repository.root)
-            try:
-                result = dispatcher.dispatch("broken", "anything")
-            finally:
-                dispatcher.close()
+            with CapabilityRuntime(repository.root, mode="direct") as runtime:
+                result = runtime.dispatch("broken", "anything")
         self.assertFalse(result.ok)
         self.assertEqual(result.error.code, ErrorCode.INTERNAL_ERROR.value)
 

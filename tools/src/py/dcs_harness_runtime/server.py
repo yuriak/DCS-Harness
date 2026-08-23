@@ -11,14 +11,12 @@ import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from urllib.parse import unquote, urlsplit
 
 from setup_support.outputs import write_json
 
-from .context import Context
-from .dispatcher import Dispatcher
-from .plugin_api import PluginCache, PluginResolver
+from .resident import AUTOSTART_BUILTINS, CapabilityRuntime
 from .result import ErrorCode, HarnessError, ResultEnvelope
 from .server_client import LOOPBACK_HOST, SERVER_API_VERSION
 
@@ -30,19 +28,25 @@ class CapabilityHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, repository_root: Path, port: int) -> None:
+    def __init__(
+        self,
+        repository_root: Path,
+        port: int,
+        autostart_plugins: Sequence[str],
+    ) -> None:
         self.repository_root = repository_root.resolve()
-        self.context = Context.load(self.repository_root)
-        self.resolver = PluginResolver(self.repository_root)
-        self.cache = PluginCache(self.resolver)
-        self.dispatcher = Dispatcher(
-            self.repository_root,
-            backend="server",
-            context=self.context,
-            resolver=self.resolver,
-            plugin_cache=self.cache,
-        )
-        super().__init__((LOOPBACK_HOST, port), CapabilityRequestHandler)
+        self.runtime = CapabilityRuntime(self.repository_root, mode="resident")
+        try:
+            super().__init__((LOOPBACK_HOST, port), CapabilityRequestHandler)
+        except Exception:
+            self.runtime.close()
+            raise
+        try:
+            self.runtime.autostart(autostart_plugins)
+        except Exception:
+            super().server_close()
+            self.runtime.close()
+            raise
         host, bound_port = self.server_address
         self._state = {
             "pid": os.getpid(),
@@ -58,7 +62,7 @@ class CapabilityHTTPServer(ThreadingHTTPServer):
 
     def server_close(self) -> None:
         try:
-            self.dispatcher.close()
+            self.runtime.close()
         finally:
             super().server_close()
 
@@ -102,21 +106,29 @@ class CapabilityRequestHandler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/health":
             state = self.server.state
-            state.update({"ok": True, "status": "healthy"})
+            state.update(
+                {
+                    "ok": True,
+                    "status": "healthy",
+                    "runtime": self.server.runtime.status(),
+                }
+            )
             self._write_json(200, state)
             return
         if path == "/plugins":
             self._write_json(
                 200,
-                {"ok": True, "plugins": self.server.resolver.discover()},
+                {
+                    "ok": True,
+                    "plugins": self.server.runtime.resolver.discover(),
+                },
             )
             return
         prefix = "/plugins/"
         if path.startswith(prefix) and len(path) > len(prefix):
             name = unquote(path[len(prefix) :])
             try:
-                spec = self.server.resolver.resolve(name)
-                metadata, load_status = self.server.cache.describe(spec)
+                metadata, load_status = self.server.runtime.describe_plugin(name)
             except HarnessError as error:
                 self._failure(
                     404 if error.code is ErrorCode.PLUGIN_NOT_FOUND else 400,
@@ -198,7 +210,7 @@ class CapabilityRequestHandler(BaseHTTPRequestHandler):
                 request_id=request_id if isinstance(request_id, str) else None,
             )
             return
-        result = self.server.dispatcher.dispatch(
+        result = self.server.runtime.dispatch(
             plugin, command, args, request_id=request_id
         )
         self._write_json(200, result.to_dict())
@@ -207,12 +219,22 @@ class CapabilityRequestHandler(BaseHTTPRequestHandler):
 class CapabilityServer:
     """Owns server state publication and graceful cleanup."""
 
-    def __init__(self, repository_root: Path, *, port: int = 7777) -> None:
+    def __init__(
+        self,
+        repository_root: Path,
+        *,
+        port: int = 7777,
+        autostart_plugins: Sequence[str] = AUTOSTART_BUILTINS,
+    ) -> None:
         if not (0 <= port <= 65535):
             raise HarnessError(ErrorCode.INVALID_ARGUMENT, "Server port is invalid.")
         self.repository_root = repository_root.resolve()
         self.state_path = self.repository_root / "runtime" / "server.json"
-        self.httpd = CapabilityHTTPServer(self.repository_root, port)
+        self.httpd = CapabilityHTTPServer(
+            self.repository_root,
+            port,
+            autostart_plugins,
+        )
         self._published_state: dict[str, Any] | None = None
 
     @property

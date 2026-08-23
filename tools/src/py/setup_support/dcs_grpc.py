@@ -27,7 +27,7 @@ class GrpcInspection:
     installation_dir: Path | None
     config_file: Path
     version: str | None
-    host: str
+    bind_host: str
     port: int
     eval_enabled: bool
     autostart: bool
@@ -355,7 +355,7 @@ def inspect_dcs_grpc(
         installation_dir=plugin_dir if plugin_dir.is_dir() else None,
         config_file=config_file,
         version=version,
-        host=host,
+        bind_host=host,
         port=port,
         eval_enabled=eval_enabled,
         autostart=autostart,

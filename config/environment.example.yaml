@@ -18,7 +18,8 @@ grpc:
   installed: null
   installation_dir: null
   version: null
-  host: null
+  bind_host: null
+  client_host: "127.0.0.1"
   port: null
   eval_enabled: null
   autostart: null

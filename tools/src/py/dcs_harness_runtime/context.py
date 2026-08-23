@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
@@ -25,8 +26,12 @@ class Context:
     environment: dict[str, Any]
     runtime_root: Path
     generated_root: Path
-    resolver: Any = None
+    runtime: Any = field(default=None, repr=False)
     _grpc_channel: Any = field(default=None, init=False, repr=False)
+    _grpc_stubs: dict[str, Any] = field(default_factory=dict, init=False, repr=False)
+    _grpc_lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False
+    )
 
     @classmethod
     def load(cls, repository_root: Path) -> "Context":
@@ -79,21 +84,15 @@ class Context:
     def grpc_endpoint(self) -> GrpcEndpoint:
         self.require_environment()
         grpc_config = self.environment.get("grpc", {})
-        platform_config = self.environment.get("platform", {})
         if not isinstance(grpc_config, Mapping):
             raise HarnessError(
                 ErrorCode.CAPABILITY_UNAVAILABLE,
                 "Technical environment has no usable gRPC configuration.",
             )
-        bind_host_value = grpc_config.get("bind_host", grpc_config.get("host"))
+        bind_host_value = grpc_config.get("bind_host")
         bind_host = str(bind_host_value) if bind_host_value is not None else None
         client_value = grpc_config.get("client_host")
         client_host = str(client_value) if client_value else None
-        is_wsl = isinstance(platform_config, Mapping) and bool(
-            platform_config.get("is_wsl")
-        )
-        if client_host is None and bind_host not in {None, "0.0.0.0", "::"} and not is_wsl:
-            client_host = bind_host
         port = grpc_config.get("port", 50051)
         try:
             port = int(port)
@@ -114,7 +113,7 @@ class Context:
         if not endpoint.client_host:
             raise HarnessError(
                 ErrorCode.CAPABILITY_UNAVAILABLE,
-                "DCS-gRPC client_host is not configured or verified.",
+                "DCS-gRPC client_host is not configured.",
                 details={
                     "bind_host": endpoint.bind_host,
                     "port": endpoint.port,
@@ -149,24 +148,36 @@ class Context:
     def grpc_channel(self) -> Any:
         endpoint = self.require_grpc_client_endpoint()
         self.ensure_generated_import_path()
-        if self._grpc_channel is None:
-            try:
-                import grpc
+        with self._grpc_lock:
+            if self._grpc_channel is None:
+                try:
+                    import grpc
 
-                self._grpc_channel = grpc.insecure_channel(
-                    f"{endpoint.client_host}:{endpoint.port}"
-                )
-            except Exception as error:
-                raise HarnessError(
-                    ErrorCode.GRPC_CONNECTION_FAILED,
-                    "Could not create the DCS-gRPC client channel.",
-                    details={"exception_type": type(error).__name__},
-                ) from error
-        return self._grpc_channel
+                    self._grpc_channel = grpc.insecure_channel(
+                        f"{endpoint.client_host}:{endpoint.port}"
+                    )
+                except Exception as error:
+                    raise HarnessError(
+                        ErrorCode.GRPC_CONNECTION_FAILED,
+                        "Could not create the DCS-gRPC client channel.",
+                        details={"exception_type": type(error).__name__},
+                    ) from error
+            return self._grpc_channel
+
+    def grpc_stub(self, service: str, factory: Any) -> Any:
+        """Return one shared generated stub per service and Context lifetime."""
+        with self._grpc_lock:
+            stub = self._grpc_stubs.get(service)
+            if stub is None:
+                stub = factory(self.grpc_channel())
+                self._grpc_stubs[service] = stub
+            return stub
 
     def close(self) -> None:
-        if self._grpc_channel is not None:
-            close = getattr(self._grpc_channel, "close", None)
-            if callable(close):
-                close()
-            self._grpc_channel = None
+        with self._grpc_lock:
+            self._grpc_stubs.clear()
+            if self._grpc_channel is not None:
+                close = getattr(self._grpc_channel, "close", None)
+                if callable(close):
+                    close()
+                self._grpc_channel = None

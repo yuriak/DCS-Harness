@@ -1,36 +1,29 @@
-"""Direct plugin dispatcher shared by current and future backends."""
+"""Canonical invocation boundary for the capability runtime."""
 
 from __future__ import annotations
 
 import json
 import time
 import uuid
-from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
-from .context import Context
 from .logging_utils import LifecycleLogger
-from .plugin_api import PluginCache, PluginResolver
 from .result import ErrorCode, HarnessError, ResultEnvelope
+
+if TYPE_CHECKING:
+    from .resident import CapabilityRuntime
 
 
 class Dispatcher:
     def __init__(
         self,
-        repository_root: Path,
+        runtime: "CapabilityRuntime",
         *,
-        backend: str = "direct",
-        context: Context | None = None,
-        resolver: PluginResolver | None = None,
-        plugin_cache: PluginCache | None = None,
         lifecycle_logger: LifecycleLogger | None = None,
     ) -> None:
-        self.repository_root = repository_root.resolve()
-        self.backend = backend
-        self.resolver = resolver or PluginResolver(self.repository_root)
-        self.plugin_cache = plugin_cache
-        self.context = context or Context.load(self.repository_root)
-        self.context.resolver = self.resolver
+        self.runtime = runtime
+        self.repository_root = runtime.repository_root
+        self.backend = runtime.backend
         self.lifecycle_logger = lifecycle_logger or LifecycleLogger(
             self.repository_root / "runtime" / "logs" / "calls.jsonl"
         )
@@ -48,6 +41,7 @@ class Dispatcher:
         started_at = time.time()
         plugin_source: str | None = None
         plugin_load = "not_loaded"
+        plugin_runtime: str | None = None
         error_code: str | None = None
 
         try:
@@ -57,14 +51,10 @@ class Dispatcher:
                     "A plugin command is required.",
                 )
             request_args = dict(args or {})
-            spec = self.resolver.resolve(plugin)
-            plugin_source = spec.source.value
-            if self.plugin_cache is None:
-                loaded = self.resolver.load(spec)
-                plugin_load = "loaded"
-            else:
-                loaded, plugin_load = self.plugin_cache.load(spec)
-            data = loaded.invoke(self.context, command, request_args)
+            loaded, plugin_load = self.runtime.prepare_plugin(plugin)
+            plugin_source = loaded.spec.source.value
+            plugin_runtime = loaded.runtime.value
+            data = loaded.invoke(self.runtime.context, command, request_args)
             try:
                 json.dumps(data, ensure_ascii=False)
             except (TypeError, ValueError) as error:
@@ -93,6 +83,7 @@ class Dispatcher:
             "backend": self.backend,
             "plugin_source": plugin_source,
             "plugin_load": plugin_load,
+            "plugin_runtime": plugin_runtime,
             "duration_ms": duration_ms,
         }
         if result_error is None:
@@ -123,6 +114,7 @@ class Dispatcher:
                 "command": command,
                 "plugin_source": plugin_source,
                 "plugin_load": plugin_load,
+                "plugin_runtime": plugin_runtime,
                 "duration_ms": duration_ms,
                 "status": "ok" if envelope.ok else "error",
                 "error_code": error_code,
@@ -131,6 +123,3 @@ class Dispatcher:
         if not logged:
             envelope.meta["lifecycle_log"] = "failed"
         return envelope
-
-    def close(self) -> None:
-        self.context.close()

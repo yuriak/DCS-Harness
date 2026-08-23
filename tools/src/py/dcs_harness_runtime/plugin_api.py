@@ -23,6 +23,11 @@ class PluginSource(str, Enum):
     RUNTIME = "runtime"
 
 
+class PluginRuntimeKind(str, Enum):
+    STATELESS = "stateless"
+    RESIDENT = "resident"
+
+
 @dataclass(frozen=True)
 class PluginSpec:
     name: str
@@ -35,6 +40,10 @@ class LoadedPlugin:
     spec: PluginSpec
     module: ModuleType
     invoke: Callable[[Any, str, Mapping[str, Any]], Any]
+    runtime: PluginRuntimeKind
+    autostart: bool
+    start: Callable[[Any, Any], Any] | None
+    stop: Callable[[Any, Any], Any] | None
 
 
 @dataclass(frozen=True)
@@ -134,6 +143,7 @@ class PluginResolver:
             code = compile(source, str(spec.path), "exec")
             exec(code, module.__dict__)
             invoke = self._validate_module(module, spec)
+            runtime, autostart, start, stop = self._runtime_contract(module, spec)
         except HarnessError:
             sys.modules.pop(module_key, None)
             raise
@@ -144,7 +154,15 @@ class PluginResolver:
                 f"Plugin {spec.name!r} could not be imported.",
                 details={"exception_type": type(error).__name__},
             ) from error
-        return LoadedPlugin(spec=spec, module=module, invoke=invoke)
+        return LoadedPlugin(
+            spec=spec,
+            module=module,
+            invoke=invoke,
+            runtime=runtime,
+            autostart=autostart,
+            start=start,
+            stop=stop,
+        )
 
     @staticmethod
     def file_signature(spec: PluginSpec) -> PluginFileSignature:
@@ -188,6 +206,55 @@ class PluginResolver:
             )
         return invoke
 
+    @staticmethod
+    def _runtime_contract(
+        module: ModuleType,
+        spec: PluginSpec,
+    ) -> tuple[
+        PluginRuntimeKind,
+        bool,
+        Callable[[Any, Any], Any] | None,
+        Callable[[Any, Any], Any] | None,
+    ]:
+        runtime_value = getattr(module, "PLUGIN_RUNTIME", PluginRuntimeKind.STATELESS.value)
+        try:
+            runtime = PluginRuntimeKind(runtime_value)
+        except ValueError as error:
+            raise HarnessError(
+                ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                f"Plugin {spec.name!r} declares invalid PLUGIN_RUNTIME {runtime_value!r}.",
+                details={"allowed": [item.value for item in PluginRuntimeKind]},
+            ) from error
+        autostart = getattr(module, "PLUGIN_AUTOSTART", False)
+        if not isinstance(autostart, bool):
+            raise HarnessError(
+                ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                f"Plugin {spec.name!r} PLUGIN_AUTOSTART must be boolean.",
+            )
+        if autostart and runtime is not PluginRuntimeKind.RESIDENT:
+            raise HarnessError(
+                ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                f"Plugin {spec.name!r} cannot autostart unless it is resident.",
+            )
+        start = getattr(module, "start", None)
+        stop = getattr(module, "stop", None)
+        if start is not None and not callable(start):
+            raise HarnessError(
+                ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                f"Plugin {spec.name!r} start attribute must be callable.",
+            )
+        if stop is not None and not callable(stop):
+            raise HarnessError(
+                ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                f"Plugin {spec.name!r} stop attribute must be callable.",
+            )
+        if runtime is PluginRuntimeKind.STATELESS and (start is not None or stop is not None):
+            raise HarnessError(
+                ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                f"Stateless plugin {spec.name!r} cannot declare resident lifecycle hooks.",
+            )
+        return runtime, autostart, start, stop
+
     def describe(self, spec: PluginSpec) -> dict[str, Any]:
         return self.describe_loaded(self.load(spec))
 
@@ -200,6 +267,8 @@ class PluginResolver:
                 "name": spec.name,
                 "api_version": PLUGIN_API_VERSION,
                 "source": spec.source.value,
+                "runtime": loaded.runtime.value,
+                "autostart": loaded.autostart,
                 "commands": None,
             }
         try:
@@ -219,6 +288,8 @@ class PluginResolver:
         value.setdefault("name", spec.name)
         value.setdefault("api_version", PLUGIN_API_VERSION)
         value["source"] = spec.source.value
+        value["runtime"] = loaded.runtime.value
+        value["autostart"] = loaded.autostart
         return value
 
     def discover(self) -> dict[str, list[str]]:
@@ -249,13 +320,16 @@ class PluginCache:
     def __init__(self, resolver: PluginResolver) -> None:
         self.resolver = resolver
         self._entries: dict[tuple[PluginSource, str], PluginCacheEntry] = {}
+        self._immutable: set[tuple[PluginSource, str]] = set()
         self._lock = threading.RLock()
 
     def load(self, spec: PluginSpec) -> tuple[LoadedPlugin, str]:
         key = (spec.source, spec.name)
         with self._lock:
             existing = self._entries.get(key)
-            if spec.source is PluginSource.BUILTIN and existing is not None:
+            if (
+                spec.source is PluginSource.BUILTIN or key in self._immutable
+            ) and existing is not None:
                 return existing.loaded, "cache_hit"
 
             signature = (
@@ -270,6 +344,10 @@ class PluginCache:
             load_status = "reloaded" if existing is not None else "loaded"
             self._entries[key] = PluginCacheEntry(loaded=loaded, signature=signature)
             return loaded, load_status
+
+    def mark_immutable(self, spec: PluginSpec) -> None:
+        with self._lock:
+            self._immutable.add((spec.source, spec.name))
 
     def describe(self, spec: PluginSpec) -> tuple[dict[str, Any], str]:
         loaded, load_status = self.load(spec)

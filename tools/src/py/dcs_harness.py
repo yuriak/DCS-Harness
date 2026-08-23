@@ -113,18 +113,15 @@ def invoke_request(
     args: dict[str, Any],
     request_id: str,
 ):
-    from dcs_harness_runtime.dispatcher import Dispatcher
+    from dcs_harness_runtime.resident import CapabilityRuntime
     from dcs_harness_runtime.result import ErrorCode, HarnessError
     from dcs_harness_runtime.server_client import ServerClient
 
     def dispatch_direct():
-        dispatcher = Dispatcher(repository_root, backend="direct")
-        try:
-            return dispatcher.dispatch(
+        with CapabilityRuntime(repository_root, mode="direct") as runtime:
+            return runtime.dispatch(
                 plugin, command, args, request_id=request_id
             )
-        finally:
-            dispatcher.close()
 
     if backend == "direct":
         return dispatch_direct()

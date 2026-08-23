@@ -107,6 +107,25 @@ class RuntimeTests(unittest.TestCase):
             all(item.status is setup_module.CheckStatus.NOT_TESTED for item in results)
         )
 
+    def test_runtime_directories_include_memory_placeholder(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            result = setup_module.ensure_runtime_directories(repository_root)
+            expected = (
+                "generated/grpc",
+                "logs",
+                "workspace",
+                "plugins/py",
+                "plugins/lua",
+                "memory",
+            )
+            for relative in expected:
+                self.assertTrue(
+                    (repository_root / "runtime" / relative).is_dir(),
+                    relative,
+                )
+        self.assertIs(result.status, setup_module.CheckStatus.OK)
+
 
 class SerializationTests(unittest.TestCase):
     def test_yaml_serialization_preserves_scalar_types(self) -> None:
@@ -134,6 +153,69 @@ class SerializationTests(unittest.TestCase):
             self.assertEqual(text_path.read_text(encoding="utf-8"), "second\n")
             report = json.loads(report_path.read_text(encoding="utf-8"))
             self.assertEqual(report["status"], "READY")
+
+
+class EnvironmentConfigTests(unittest.TestCase):
+    def test_generated_environment_uses_only_explicit_endpoint_fields(self) -> None:
+        inspection = setup_module.GrpcInspection(
+            diagnostics=(),
+            installed=True,
+            installation_dir=Path("/saved-games/DCS-gRPC"),
+            config_file=Path("/saved-games/dcs-grpc.lua"),
+            version="test",
+            bind_host="0.0.0.0",
+            port=50051,
+            eval_enabled=True,
+            autostart=True,
+            proto_source=Path("/saved-games/protos"),
+            proto_source_kind="installed",
+        )
+        environment = setup_module.build_environment_data(
+            repository_root=Path("/repository"),
+            generated_at="now",
+            status="READY",
+            platform_info=setup_module.PlatformInfo(
+                host_os="windows",
+                agent_os="wsl",
+                is_wsl=True,
+                python_executable="python",
+                python_version="3.13",
+            ),
+            dcs_path=Path("/dcs"),
+            saved_games_path=Path("/saved-games"),
+            grpc_inspection=inspection,
+        )
+
+        self.assertEqual(environment["grpc"]["bind_host"], "0.0.0.0")
+        self.assertEqual(environment["grpc"]["client_host"], "127.0.0.1")
+        self.assertNotIn("host", environment["grpc"])
+
+    def test_reads_existing_player_client_host(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment_path = Path(temporary) / "environment.yaml"
+            environment_path.write_text(
+                "setup:\n  status: READY\ngrpc:\n"
+                "  bind_host: \"0.0.0.0\"\n"
+                "  client_host: \"172.30.96.1\"\n"
+                "  port: 50051\n",
+                encoding="utf-8",
+            )
+
+            client_host = setup_module.read_existing_client_host(environment_path)
+
+        self.assertEqual(client_host, "172.30.96.1")
+
+    def test_missing_client_host_uses_no_legacy_host_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment_path = Path(temporary) / "environment.yaml"
+            environment_path.write_text(
+                "grpc:\n  host: \"172.30.96.1\"\n  port: 50051\n",
+                encoding="utf-8",
+            )
+
+            client_host = setup_module.read_existing_client_host(environment_path)
+
+        self.assertIsNone(client_host)
 
 
 if __name__ == "__main__":
