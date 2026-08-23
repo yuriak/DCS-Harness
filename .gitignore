@@ -1,12 +1,19 @@
 # Local technical environment configuration
 config/environment.yaml
 
+# Local development requirements and planning documents
+dev_docs/
+Note.md
+dev_AGENTS.md
+
 # Locally generated runtime artifacts
 runtime/venv/
 runtime/generated/
 runtime/logs/
 runtime/workspace/
+runtime/plugins/
 runtime/setup_report.json
+runtime/server.json
 
 # Python caches and tooling artifacts
 __pycache__/

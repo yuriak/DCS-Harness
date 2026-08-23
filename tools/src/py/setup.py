@@ -23,11 +23,16 @@ from enum import Enum
 from pathlib import Path
 from typing import Sequence
 
-from dcs_grpc_setup import GrpcInspection, inspect_dcs_grpc, prepare_bindings
-from setup_outputs import atomic_write_text, render_setup_log, write_json, write_yaml
+from setup_support.dcs_grpc import GrpcInspection, inspect_dcs_grpc, prepare_bindings
+from setup_support.outputs import (
+    atomic_write_text,
+    render_setup_log,
+    write_json,
+    write_yaml,
+)
 
 
-SETUP_VERSION = "0.4.0"
+SETUP_VERSION = "0.4.1"
 MINIMUM_PYTHON = (3, 10)
 PYSOCKS_BOOTSTRAP_VERSION = "1.7.1"
 REQUIRED_SUBMODULES = (
@@ -674,6 +679,8 @@ def prepare_runtime(repository_root: Path, dry_run: bool) -> list[CheckResult]:
     generated_dir = runtime_dir / "generated" / "grpc"
     logs_dir = runtime_dir / "logs"
     workspace_dir = runtime_dir / "workspace"
+    runtime_python_plugins = runtime_dir / "plugins" / "py"
+    runtime_lua_plugins = runtime_dir / "plugins" / "lua"
     python_executable = venv_python_path(venv_dir)
     fingerprint_file = venv_dir / ".dcs-harness-dependencies.sha256"
 
@@ -692,7 +699,13 @@ def prepare_runtime(repository_root: Path, dry_run: bool) -> list[CheckResult]:
         ]
 
     try:
-        for path in (generated_dir, logs_dir, workspace_dir):
+        for path in (
+            generated_dir,
+            logs_dir,
+            workspace_dir,
+            runtime_python_plugins,
+            runtime_lua_plugins,
+        ):
             path.mkdir(parents=True, exist_ok=True)
     except OSError as error:
         return [

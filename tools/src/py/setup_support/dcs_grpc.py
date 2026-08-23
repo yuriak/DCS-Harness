@@ -1,4 +1,4 @@
-"""DCS-gRPC static inspection and Python binding generation helpers."""
+"""Setup support for DCS-gRPC inspection and binding generation."""
 
 from __future__ import annotations
 

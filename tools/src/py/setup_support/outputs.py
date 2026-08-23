@@ -1,4 +1,4 @@
-"""Serialization and atomic output helpers for DCS-Harness setup."""
+"""Serialization and atomic output helpers used during setup."""
 
 from __future__ import annotations
 

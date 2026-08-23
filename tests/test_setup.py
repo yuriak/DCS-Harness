@@ -12,7 +12,7 @@ SETUP_SOURCE = REPOSITORY_ROOT / "tools" / "src" / "py"
 sys.path.insert(0, str(SETUP_SOURCE))
 
 import setup as setup_module  # noqa: E402
-from setup_outputs import atomic_write_text, dump_yaml, write_json  # noqa: E402
+from setup_support.outputs import atomic_write_text, dump_yaml, write_json  # noqa: E402
 
 
 class RepositoryDiscoveryTests(unittest.TestCase):
