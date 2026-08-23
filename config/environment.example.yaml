@@ -1,0 +1,55 @@
+setup:
+  status: null
+  generated_at: null
+  version: null
+
+platform:
+  host_os: null
+  agent_os: null
+  is_wsl: null
+
+dcs:
+  install_dir: null
+  saved_games_dir: null
+  mission_scripting_file: null
+  log_file: null
+
+grpc:
+  installed: null
+  installation_dir: null
+  version: null
+  host: null
+  port: null
+  eval_enabled: null
+  autostart: null
+  config_file: null
+  proto_source: null
+  proto_source_kind: null
+  generated_stub_dir: null
+
+python:
+  executable: null
+  bootstrap_executable: null
+  version: null
+  venv_dir: null
+
+third_party:
+  dcs_grpc:
+    path: null
+    revision: null
+  moose:
+    path: null
+    revision: null
+  mist:
+    path: null
+    revision: null
+  pydcs:
+    path: null
+    revision: null
+  dcs_lua_definitions:
+    path: null
+    revision: null
+
+capabilities:
+  grpc_bindings: null
+  grpc_live_connectivity: not_tested

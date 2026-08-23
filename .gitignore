@@ -1,0 +1,33 @@
+# Local technical environment configuration
+config/environment.yaml
+
+# Locally generated runtime artifacts
+runtime/venv/
+runtime/generated/
+runtime/logs/
+runtime/workspace/
+runtime/setup_report.json
+
+# Python caches and tooling artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Coverage and build artifacts
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

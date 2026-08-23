@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dcs-harness"
+version = "0.1.0"
+description = "Agent-native workspace and technical substrate for DCS World"
+requires-python = ">=3.10"
+dependencies = [
+    "grpcio>=1.70,<2",
+    "grpcio-tools>=1.70,<2",
+    "protobuf>=5,<7",
+    "PyYAML>=6,<7",
+]
+
+[tool.setuptools]
+py-modules = []

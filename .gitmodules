@@ -1,0 +1,15 @@
+[submodule "third_party/dcs-grpc"]
+	path = third_party/dcs-grpc
+	url = https://github.com/DCS-gRPC/rust-server.git
+[submodule "third_party/moose"]
+	path = third_party/moose
+	url = https://github.com/FlightControl-Master/MOOSE.git
+[submodule "third_party/mist"]
+	path = third_party/mist
+	url = https://github.com/mrSkortch/MissionScriptingTools.git
+[submodule "third_party/pydcs"]
+	path = third_party/pydcs
+	url = https://github.com/pydcs/dcs.git
+[submodule "third_party/dcs-lua-definitions"]
+	path = third_party/dcs-lua-definitions
+	url = https://github.com/omltcat/dcs-lua-definitions.git
