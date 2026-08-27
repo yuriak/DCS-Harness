@@ -8,6 +8,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 from urllib.request import urlopen
 
 
@@ -18,8 +19,14 @@ sys.path.insert(0, str(SOURCE_ROOT))
 from dcs_harness import invoke_request  # noqa: E402
 from dcs_harness_runtime.plugin_api import PluginCache, PluginResolver  # noqa: E402
 from dcs_harness_runtime.result import ErrorCode, HarnessError  # noqa: E402
-from dcs_harness_runtime.server import CapabilityServer  # noqa: E402
-from dcs_harness_runtime.server_client import ServerClient  # noqa: E402
+from dcs_harness_runtime.server import (  # noqa: E402
+    CapabilityRequestHandler,
+    CapabilityServer,
+)
+from dcs_harness_runtime.server_client import (  # noqa: E402
+    ServerClient,
+    ServerState,
+)
 
 
 PLUGIN_TEMPLATE = """\
@@ -157,6 +164,29 @@ class ResidentServerTests(unittest.TestCase):
         self.assertEqual(first.meta["plugin_load"], "loaded")
         self.assertEqual(second.meta["plugin_load"], "cache_hit")
 
+    def test_invoke_can_outlive_short_health_timeout(self) -> None:
+        self.repository.write_builtin_source(
+            "slow",
+            '''\
+import time
+
+PLUGIN_NAME = "slow"
+PLUGIN_API_VERSION = 1
+
+def invoke(context, command, args):
+    time.sleep(0.35)
+    return {"completed": True}
+''',
+        )
+        client = ServerClient(self.repository.root, timeout=0.25)
+
+        result = client.invoke(
+            "slow", "wait", {}, request_id="slow", state=self.state
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.data, {"completed": True})
+
     def test_new_runtime_plugin_and_targeted_reload(self) -> None:
         path = self.repository.write_runtime("dynamic", 1)
         first = self.client.invoke(
@@ -215,6 +245,72 @@ class ResidentServerTests(unittest.TestCase):
         )
         self.assertTrue(result.ok)
         self.assertEqual(result.meta["backend"], "server")
+
+
+class ResponseWriteBoundaryTests(unittest.TestCase):
+    @staticmethod
+    def handler_with_writer(writer: Mock) -> CapabilityRequestHandler:
+        handler = CapabilityRequestHandler.__new__(CapabilityRequestHandler)
+        handler.wfile = writer
+        handler.send_response = Mock()
+        handler.send_header = Mock()
+        handler.end_headers = Mock()
+        return handler
+
+    def test_client_disconnect_errors_are_suppressed(self) -> None:
+        for error in (BrokenPipeError(), ConnectionResetError()):
+            with self.subTest(error=type(error).__name__):
+                writer = Mock()
+                writer.write.side_effect = error
+                handler = self.handler_with_writer(writer)
+
+                handler._write_json(200, {"ok": True})
+
+                writer.write.assert_called_once()
+
+    def test_unexpected_write_error_remains_observable(self) -> None:
+        writer = Mock()
+        writer.write.side_effect = OSError("unexpected write failure")
+        handler = self.handler_with_writer(writer)
+
+        with self.assertRaisesRegex(OSError, "unexpected write failure"):
+            handler._write_json(200, {"ok": True})
+
+
+class ServerReadinessTests(unittest.TestCase):
+    def test_wait_until_ready_retries_published_state_health(self) -> None:
+        client = ServerClient(Path("."))
+        state = ServerState(123, "127.0.0.1", 7777, "now", 1)
+        unavailable = HarnessError(
+            ErrorCode.SERVER_UNAVAILABLE, "not ready yet"
+        )
+        client.load_state = Mock(return_value=state)
+        client.health = Mock(side_effect=(unavailable, unavailable, state))
+
+        with patch("dcs_harness_runtime.server_client.time.sleep") as sleep:
+            result = client.wait_until_ready()
+
+        self.assertIs(result, state)
+        self.assertEqual(client.health.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+        sleep.assert_called_with(0.1)
+
+    def test_wait_until_ready_is_bounded_when_health_stays_unavailable(self) -> None:
+        client = ServerClient(Path("."))
+        state = ServerState(123, "127.0.0.1", 7777, "now", 1)
+        unavailable = HarnessError(
+            ErrorCode.SERVER_UNAVAILABLE, "still unavailable"
+        )
+        client.load_state = Mock(return_value=state)
+        client.health = Mock(side_effect=unavailable)
+
+        with patch("dcs_harness_runtime.server_client.time.sleep") as sleep:
+            with self.assertRaises(HarnessError) as raised:
+                client.wait_until_ready()
+
+        self.assertEqual(raised.exception.code, ErrorCode.SERVER_UNAVAILABLE)
+        self.assertEqual(client.health.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
 
 
 class BackendSelectionTests(unittest.TestCase):

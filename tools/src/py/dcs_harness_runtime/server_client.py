@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -14,6 +15,9 @@ from .result import ErrorCode, HarnessError, ResultEnvelope
 
 SERVER_API_VERSION = 1
 LOOPBACK_HOST = "127.0.0.1"
+AUTO_READY_ATTEMPTS = 3
+AUTO_READY_INTERVAL_SECONDS = 0.1
+DEFAULT_INVOKE_TIMEOUT_SECONDS = 305.0
 
 
 @dataclass(frozen=True)
@@ -57,9 +61,18 @@ class ServerState:
 
 
 class ServerClient:
-    def __init__(self, repository_root: Path, *, timeout: float = 0.25) -> None:
+    def __init__(
+        self,
+        repository_root: Path,
+        *,
+        timeout: float = 0.25,
+        invoke_timeout: float = DEFAULT_INVOKE_TIMEOUT_SECONDS,
+    ) -> None:
         self.state_path = repository_root.resolve() / "runtime" / "server.json"
+        # Health probes must stay short so auto backend selection remains bounded.
         self.timeout = timeout
+        # Plugin calls may legitimately run up to the public 300-second gRPC limit.
+        self.invoke_timeout = invoke_timeout
 
     def load_state(self) -> ServerState:
         try:
@@ -87,6 +100,7 @@ class ServerClient:
         path: str,
         *,
         payload: Mapping[str, Any] | None = None,
+        timeout: float,
     ) -> Any:
         data = None
         headers = {"Accept": "application/json"}
@@ -99,7 +113,7 @@ class ServerClient:
             self._url(state, path), data=data, headers=headers, method=method
         )
         try:
-            with urlopen(request, timeout=self.timeout) as response:
+            with urlopen(request, timeout=timeout) as response:
                 body = response.read()
         except (HTTPError, URLError, OSError, TimeoutError) as error:
             raise HarnessError(
@@ -118,7 +132,7 @@ class ServerClient:
 
     def health(self, state: ServerState | None = None) -> ServerState:
         state = state or self.load_state()
-        value = self._request(state, "/health")
+        value = self._request(state, "/health", timeout=self.timeout)
         if not isinstance(value, dict) or not value.get("ok"):
             raise HarnessError(
                 ErrorCode.SERVER_UNAVAILABLE,
@@ -140,6 +154,27 @@ class ServerClient:
             )
         return state
 
+    def wait_until_ready(
+        self,
+        *,
+        attempts: int = AUTO_READY_ATTEMPTS,
+        interval: float = AUTO_READY_INTERVAL_SECONDS,
+    ) -> ServerState:
+        """Validate a published server state with a short startup grace period."""
+        state = self.load_state()
+        last_error: HarnessError | None = None
+        for attempt in range(attempts):
+            try:
+                return self.health(state)
+            except HarnessError as error:
+                if error.code is not ErrorCode.SERVER_UNAVAILABLE:
+                    raise
+                last_error = error
+                if attempt + 1 < attempts:
+                    time.sleep(interval)
+        assert last_error is not None
+        raise last_error
+
     def invoke(
         self,
         plugin: str,
@@ -159,6 +194,7 @@ class ServerClient:
                 "args": dict(args),
                 "request_id": request_id,
             },
+            timeout=self.invoke_timeout,
         )
         if not isinstance(value, dict):
             raise HarnessError(

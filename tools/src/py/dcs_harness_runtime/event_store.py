@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sqlite3
 from contextlib import closing, contextmanager
 from datetime import datetime, timezone
@@ -15,6 +16,7 @@ from .result import ErrorCode, HarnessError
 
 DEFAULT_EVENT_LIMIT = 50
 MAX_EVENT_LIMIT = 500
+SESSION_ID_PATTERN = re.compile(r"[0-9]+")
 
 
 class EventWriter:
@@ -96,7 +98,6 @@ class EventStore:
         since: float | None = None,
         until: float | None = None,
         event_type: str | None = None,
-        session_id: str | None = None,
         limit: int = DEFAULT_EVENT_LIMIT,
     ) -> list[dict[str, Any]]:
         limit = self.validate_limit(limit)
@@ -108,9 +109,6 @@ class EventStore:
                 "Event query 'since' cannot be greater than 'until'.",
             )
         event_type = self._optional_text(event_type, "event_type")
-        session_id = self._optional_text(
-            session_id, "session_id", allow_integer=True
-        )
 
         clauses: list[str] = []
         parameters: list[Any] = []
@@ -123,9 +121,6 @@ class EventStore:
         if event_type is not None:
             clauses.append("event_type = ?")
             parameters.append(event_type)
-        if session_id is not None:
-            clauses.append("dcs_session_id = ?")
-            parameters.append(session_id)
         where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         parameters.append(limit)
         sql = (
@@ -172,19 +167,13 @@ class EventStore:
         return value
 
     @staticmethod
-    def _optional_text(
-        value: Any, name: str, *, allow_integer: bool = False
-    ) -> str | None:
+    def _optional_text(value: Any, name: str) -> str | None:
         if value is None:
             return None
-        allowed_type = isinstance(value, str) or (
-            allow_integer and isinstance(value, int) and not isinstance(value, bool)
-        )
-        if not allowed_type:
+        if not isinstance(value, str):
             raise HarnessError(
                 ErrorCode.INVALID_ARGUMENT,
-                f"Event query {name!r} must be a non-empty string"
-                + (" or integer." if allow_integer else "."),
+                f"Event query {name!r} must be a non-empty string.",
             )
         value = str(value)
         if not value:
@@ -211,3 +200,28 @@ class EventStore:
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path, timeout=5.0)
+
+
+class EventStoreCatalog:
+    """Creates and reopens one factual ledger per DCS-gRPC session."""
+
+    def __init__(self, root: Path, repository_root: Path) -> None:
+        self.root = root.resolve()
+        self.repository_root = repository_root.resolve()
+
+    def select(self, session_id: str) -> EventStore:
+        if not SESSION_ID_PATTERN.fullmatch(session_id):
+            raise ValueError("DCS session ID is not a filesystem-safe integer.")
+        self.root.mkdir(parents=True, exist_ok=True)
+        existing = sorted(self.root.glob(f"*_{session_id}.sqlite"))
+        if existing:
+            path = existing[-1]
+        else:
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            path = self.root / f"{timestamp}_{session_id}.sqlite"
+        store = EventStore(path)
+        store.initialize()
+        return store
+
+    def display_path(self, store: EventStore) -> str:
+        return store.path.resolve().relative_to(self.repository_root).as_posix()

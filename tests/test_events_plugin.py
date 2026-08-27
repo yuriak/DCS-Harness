@@ -20,7 +20,10 @@ sys.path.insert(0, str(GENERATED_ROOT))
 
 from dcs_harness_runtime.context import Context  # noqa: E402
 from dcs_harness_runtime.event_collector import EventCollector  # noqa: E402
-from dcs_harness_runtime.event_store import EventStore  # noqa: E402
+from dcs_harness_runtime.event_store import (  # noqa: E402
+    EventStore,
+    EventStoreCatalog,
+)
 from dcs_harness_runtime.logging_utils import LifecycleLogger  # noqa: E402
 from dcs_harness_runtime.resident import CapabilityRuntime  # noqa: E402
 from dcs_harness_runtime.result import ErrorCode, HarnessError  # noqa: E402
@@ -147,6 +150,17 @@ def event_messages() -> tuple[Any, Any, Any, Any]:
     )
 
 
+def simulation_fps_event(time_value: float = 1.5) -> Any:
+    from dcs_grpc.dcs.mission.v0 import mission_pb2
+
+    return mission_pb2.StreamEventsResponse(
+        time=time_value,
+        simulation_fps=mission_pb2.StreamEventsResponse.SimulationFpsEvent(
+            average=60.0
+        ),
+    )
+
+
 def ready_context(root: Path, channel: FakeMissionChannel) -> Context:
     context = Context(
         repository_root=root,
@@ -201,10 +215,6 @@ class EventStoreTests(unittest.TestCase):
                 ["shot"],
             )
             self.assertEqual(
-                [item["session_id"] for item in reopened.query(session_id="one")],
-                ["one", "one"],
-            )
-            self.assertEqual(
                 [item["mission_time"] for item in reopened.query(since=1.5, until=2.5)],
                 [2.0],
             )
@@ -240,6 +250,42 @@ class EventStoreTests(unittest.TestCase):
             self.assertEqual(store.count(), 100)
 
 
+class EventStoreCatalogTests(unittest.TestCase):
+    def test_session_ledgers_are_isolated_reused_and_legacy_is_untouched(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            runtime_root = root / "runtime"
+            runtime_root.mkdir()
+            legacy = runtime_root / "events.sqlite"
+            legacy.write_bytes(b"legacy-ledger")
+            catalog = EventStoreCatalog(runtime_root / "events", root)
+
+            first = catalog.select("100")
+            with first.writer() as writer:
+                writer.append(
+                    session_id="100",
+                    mission_time=1,
+                    event_type="mission_start",
+                    payload={"time": 1, "mission_start": {}},
+                )
+            reopened = catalog.select("100")
+            second = catalog.select("200")
+
+            self.assertEqual(reopened.path, first.path)
+            self.assertNotEqual(second.path, first.path)
+            self.assertEqual(reopened.count(), 1)
+            self.assertEqual(second.count(), 0)
+            self.assertRegex(first.path.name, r"^\d{8}-\d{6}_100\.sqlite$")
+            self.assertEqual(
+                catalog.display_path(first), f"runtime/events/{first.path.name}"
+            )
+            self.assertEqual(legacy.read_bytes(), b"legacy-ledger")
+            self.assertEqual(len(list((runtime_root / "events").glob("*.sqlite"))), 2)
+
+            with self.assertRaises(ValueError):
+                catalog.select("../unsafe")
+
+
 class EventCollectorTests(unittest.TestCase):
     def test_persist_reconnect_malformed_and_query(self) -> None:
         import grpc
@@ -249,7 +295,7 @@ class EventCollectorTests(unittest.TestCase):
 
         first, second, malformed, third = event_messages()
         stream_one = PlannedStream(
-            [first, malformed, second],
+            [first, simulation_fps_event(), malformed, second],
             terminal_error=UnavailableError(grpc.StatusCode.UNAVAILABLE, "restart"),
         )
         stream_two = PlannedStream([third], block_after_events=True)
@@ -258,34 +304,47 @@ class EventCollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
             context = ready_context(root, channel)
-            store = EventStore(root / "runtime" / "events.sqlite")
-            store.initialize()
+            stores = EventStoreCatalog(root / "runtime" / "events", root)
             logger = LifecycleLogger(root / "runtime" / "logs" / "runtime.jsonl")
             collector = EventCollector(
-                context, store, logger, initial_backoff=0.01, max_backoff=0.02
+                context, stores, logger, initial_backoff=0.01, max_backoff=0.02
             )
             stop_event = threading.Event()
             thread = threading.Thread(target=collector.run, args=(stop_event,))
             thread.start()
             deadline = time.monotonic() + 3
-            while store.count() < 3 and time.monotonic() < deadline:
+            while (
+                collector.status()["session_id"] != "202"
+                or collector.status()["stored_events"] < 1
+            ) and time.monotonic() < deadline:
                 time.sleep(0.01)
-            self.assertEqual(store.count(), 3)
 
             status = collector.status()
             self.assertEqual(status["collector"], "running")
             self.assertEqual(status["stream"], "connected")
             self.assertEqual(status["session_id"], "202")
             self.assertEqual(status["malformed_events"], 1)
+            self.assertEqual(status["ignored_events"], 1)
             self.assertGreaterEqual(status["reconnects"], 1)
-            self.assertEqual(
-                [item["event_type"] for item in store.query(limit=3)],
-                ["mission_end", "score", "mission_start"],
+            self.assertEqual(status["stored_events"], 1)
+            self.assertRegex(
+                status["store_path"],
+                r"^runtime/events/\d{8}-\d{6}_202\.sqlite$",
             )
             self.assertEqual(
-                [item["event_type"] for item in store.query(session_id="101")],
+                [item["event_type"] for item in collector.current_store().query()],
+                ["mission_end"],
+            )
+            first_store = stores.select("101")
+            self.assertEqual(
+                [item["event_type"] for item in first_store.query()],
                 ["score", "mission_start"],
             )
+            self.assertNotIn(
+                "simulation_fps",
+                [item["event_type"] for item in first_store.query()],
+            )
+            self.assertEqual(len(list(stores.root.glob("*.sqlite"))), 2)
 
             stop_event.set()
             collector.cancel()
@@ -301,6 +360,8 @@ class EventCollectorTests(unittest.TestCase):
         channel = FakeMissionChannel([1], [stream])
 
         class FailingStore:
+            path = Path("runtime/events/failing.sqlite")
+
             @contextmanager
             def writer(self) -> Iterator[Any]:
                 class Writer:
@@ -312,11 +373,18 @@ class EventCollectorTests(unittest.TestCase):
             def count(self) -> int:
                 return 0
 
+        class FailingCatalog:
+            def select(self, session_id: str) -> FailingStore:
+                return FailingStore()
+
+            def display_path(self, store: FailingStore) -> str:
+                return store.path.as_posix()
+
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
             context = ready_context(root, channel)
             logger = LifecycleLogger(root / "runtime" / "logs" / "runtime.jsonl")
-            collector = EventCollector(context, FailingStore(), logger)
+            collector = EventCollector(context, FailingCatalog(), logger)
             from dcs_harness_runtime.background import BackgroundTaskManager
 
             manager = BackgroundTaskManager(logger)
@@ -359,6 +427,8 @@ class EventsPluginIntegrationTests(unittest.TestCase):
             self.assertEqual(result.data["collector"], "running")
             self.assertEqual(result.data["stream"], "disconnected")
             self.assertIsNotNone(result.data["last_error"])
+            self.assertIsNone(result.data["store_path"])
+            self.assertEqual(result.data["ignored_events"], 0)
             self.assertEqual(runtime.status()["state"], "running")
             runtime.close()
 
@@ -379,18 +449,20 @@ class EventsPluginIntegrationTests(unittest.TestCase):
             runtime.context._grpc_channel = channel
             runtime.autostart(("events",))
             deadline = time.monotonic() + 3
-            database = root / "runtime" / "events.sqlite"
-            store = EventStore(database)
-            while (not database.exists() or store.count() < 1) and time.monotonic() < deadline:
+            while time.monotonic() < deadline:
+                status = runtime.dispatch("events", "status")
+                if status.data and status.data["stored_events"] >= 1:
+                    break
                 time.sleep(0.01)
 
-            status = runtime.dispatch("events", "status")
             recent = runtime.dispatch("events", "recent", {"limit": 1})
             query = runtime.dispatch(
-                "events", "query", {"session_id": "77", "event_type": "mission_start"}
+                "events", "query", {"event_type": "mission_start"}
             )
             self.assertTrue(status.ok)
             self.assertEqual(status.data["stored_events"], 1)
+            self.assertEqual(status.data["session_id"], "77")
+            self.assertTrue(status.data["store_path"].endswith("_77.sqlite"))
             self.assertEqual(recent.data["events"][0]["event_type"], "mission_start")
             self.assertEqual(query.data["count"], 1)
             self.assertEqual(
@@ -400,10 +472,78 @@ class EventsPluginIntegrationTests(unittest.TestCase):
             rejected = runtime.dispatch("events", "query", {"sql": "DROP TABLE events"})
             self.assertFalse(rejected.ok)
             self.assertEqual(rejected.error.code, ErrorCode.INVALID_ARGUMENT.value)
+            historical = runtime.dispatch(
+                "events", "query", {"session_id": "77"}
+            )
+            self.assertFalse(historical.ok)
+            self.assertEqual(
+                historical.error.code, ErrorCode.INVALID_ARGUMENT.value
+            )
 
             runtime.close()
             self.assertTrue(channel.closed)
             self.assertEqual(runtime.status()["state"], "stopped")
+
+    def test_harness_restart_reopens_same_session_ledger(self) -> None:
+        first, second, _, _ = event_messages()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            self.prepare_events_plugin(root)
+
+            def start_runtime(
+                event: Any,
+            ) -> tuple[CapabilityRuntime, FakeMissionChannel]:
+                channel = FakeMissionChannel(
+                    [88], [PlannedStream([event], block_after_events=True)]
+                )
+                runtime = CapabilityRuntime(root, mode="resident")
+                runtime.context.environment = {
+                    "setup": {"status": "READY"},
+                    "grpc": {"client_host": "127.0.0.1", "port": 50051},
+                }
+                runtime.context.generated_root = (
+                    REPOSITORY_ROOT / "runtime" / "generated"
+                )
+                runtime.context._grpc_channel = channel
+                runtime.autostart(("events",))
+                return runtime, channel
+
+            first_runtime, first_channel = start_runtime(first)
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                first_status = first_runtime.dispatch("events", "status")
+                if first_status.data and first_status.data["stored_events"] == 1:
+                    break
+                time.sleep(0.01)
+            first_path = first_status.data["store_path"]
+            first_runtime.close()
+            self.assertTrue(first_channel.closed)
+
+            second_runtime, second_channel = start_runtime(second)
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                second_status = second_runtime.dispatch("events", "status")
+                if second_status.data and second_status.data["stored_events"] == 2:
+                    break
+                time.sleep(0.01)
+
+            self.assertEqual(second_status.data["store_path"], first_path)
+            self.assertEqual(second_status.data["stored_events"], 2)
+            self.assertEqual(
+                [
+                    item["event_type"]
+                    for item in second_runtime.dispatch(
+                        "events", "recent", {"limit": 2}
+                    ).data["events"]
+                ],
+                ["score", "mission_start"],
+            )
+            self.assertEqual(
+                len(list((root / "runtime" / "events").glob("*.sqlite"))), 1
+            )
+
+            second_runtime.close()
+            self.assertTrue(second_channel.closed)
 
 
 if __name__ == "__main__":

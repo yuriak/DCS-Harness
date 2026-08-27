@@ -16,7 +16,7 @@ from .plugin_api import LoadedPlugin, PluginCache, PluginResolver, PluginRuntime
 from .result import ErrorCode, HarnessError, ResultEnvelope
 
 
-AUTOSTART_BUILTINS: tuple[str, ...] = ("events",)
+AUTOSTART_BUILTINS: tuple[str, ...] = ("events", "logs")
 DEFAULT_TASK_JOIN_TIMEOUT = 5.0
 
 

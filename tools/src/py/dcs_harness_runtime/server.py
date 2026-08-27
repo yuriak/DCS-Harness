@@ -82,7 +82,13 @@ class CapabilityRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            # The client can time out or disconnect while a capability is still
+            # producing its response.  That is an expected connection boundary,
+            # not a server failure worth a socketserver traceback.
+            return
 
     def _failure(
         self,

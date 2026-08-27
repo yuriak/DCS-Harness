@@ -133,8 +133,9 @@ def invoke_request(
         )
 
     try:
+        state = client.wait_until_ready()
         return client.invoke(
-            plugin, command, args, request_id=request_id
+            plugin, command, args, request_id=request_id, state=state
         )
     except HarnessError as error:
         if error.code is not ErrorCode.SERVER_UNAVAILABLE:

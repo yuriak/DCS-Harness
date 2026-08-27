@@ -107,13 +107,14 @@ class RuntimeTests(unittest.TestCase):
             all(item.status is setup_module.CheckStatus.NOT_TESTED for item in results)
         )
 
-    def test_runtime_directories_include_memory_placeholder(self) -> None:
+    def test_runtime_directories_include_logs_and_memory_placeholders(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository_root = Path(temporary)
             result = setup_module.ensure_runtime_directories(repository_root)
             expected = (
                 "generated/grpc",
                 "logs",
+                "logs/dcs",
                 "workspace",
                 "plugins/py",
                 "plugins/lua",

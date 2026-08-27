@@ -10,29 +10,30 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from .event_store import EventStore
+from .event_store import EventStore, EventStoreCatalog
 from .logging_utils import LifecycleLogger
-from .result import HarnessError
+from .result import ErrorCode, HarnessError
 
 
 INITIAL_RECONNECT_DELAY = 0.25
 MAX_RECONNECT_DELAY = 5.0
 SESSION_TIMEOUT_SECONDS = 3.0
 MISSION_SERVICE = "dcs.mission.v0.MissionService"
+IGNORED_EVENT_TYPES = frozenset({"simulation_fps"})
 
 
 class EventCollector:
     def __init__(
         self,
         context: Any,
-        store: EventStore,
+        stores: EventStoreCatalog,
         logger: LifecycleLogger,
         *,
         initial_backoff: float = INITIAL_RECONNECT_DELAY,
         max_backoff: float = MAX_RECONNECT_DELAY,
     ) -> None:
         self.context = context
-        self.store = store
+        self.stores = stores
         self.logger = logger
         self.initial_backoff = max(initial_backoff, 0.001)
         self.max_backoff = max(max_backoff, self.initial_backoff)
@@ -41,10 +42,12 @@ class EventCollector:
         self._collector = "starting"
         self._stream = "disconnected"
         self._session_id: str | None = None
+        self._store: EventStore | None = None
         self._last_event_at: str | None = None
         self._last_error: dict[str, Any] | None = None
         self._reconnects = 0
         self._malformed_events = 0
+        self._ignored_events = 0
 
     def run(self, stop_event: threading.Event) -> None:
         self._set(collector="running")
@@ -87,7 +90,6 @@ class EventCollector:
                 if self._collector != "failed":
                     self._collector = "stopped"
                 self._stream = "disconnected"
-                self._session_id = None
             self._log("event_collector_stop")
 
     def cancel(self) -> None:
@@ -112,9 +114,24 @@ class EventCollector:
                 ),
                 "reconnects": self._reconnects,
                 "malformed_events": self._malformed_events,
+                "ignored_events": self._ignored_events,
+                "store_path": (
+                    self.stores.display_path(self._store) if self._store else None
+                ),
             }
-        value["stored_events"] = self.store.count()
+            store = self._store
+        value["stored_events"] = store.count() if store else 0
         return value
+
+    def current_store(self) -> EventStore:
+        with self._lock:
+            store = self._store
+        if store is None:
+            raise HarnessError(
+                ErrorCode.CAPABILITY_UNAVAILABLE,
+                "No DCS event session ledger is available yet.",
+            )
+        return store
 
     def _connect_and_consume(self, stop_event: threading.Event) -> bool:
         self._set(stream="connecting")
@@ -123,17 +140,30 @@ class EventCollector:
             messages.GetSessionIdRequest(), timeout=SESSION_TIMEOUT_SECONDS
         )
         session_id = str(session_response.session_id)
+        store = self.stores.select(session_id)
+        with self._lock:
+            # Switch Agent-facing reads as soon as the new epoch is known.  Do
+            # not expose the prior battle while the new stream is starting.
+            if self._session_id != session_id:
+                self._last_event_at = None
+            self._session_id = session_id
+            self._store = store
         stream = stub.StreamEvents(messages.StreamEventsRequest())
         with self._lock:
             self._active_stream = stream
             self._stream = "connected"
-            self._session_id = session_id
             self._last_error = None
-        self._log("event_stream_connect", {"session_id": session_id})
+        self._log(
+            "event_stream_connect",
+            {
+                "session_id": session_id,
+                "store_path": self.stores.display_path(store),
+            },
+        )
 
         consumed = False
         try:
-            with self.store.writer() as writer:
+            with store.writer() as writer:
                 for event in stream:
                     if stop_event.is_set():
                         break
@@ -142,13 +172,17 @@ class EventCollector:
                     except Exception as error:
                         self._record_malformed(error)
                         continue
+                    consumed = True
+                    if event_type in IGNORED_EVENT_TYPES:
+                        with self._lock:
+                            self._ignored_events += 1
+                        continue
                     writer.append(
                         session_id=session_id,
                         mission_time=mission_time,
                         event_type=event_type,
                         payload=payload,
                     )
-                    consumed = True
                     self._set(last_event_at=datetime.now(timezone.utc).isoformat())
         finally:
             with self._lock:
@@ -200,7 +234,6 @@ class EventCollector:
     def _record_disconnect(self, message: str, *, error_type: str) -> None:
         with self._lock:
             self._stream = "disconnected"
-            self._session_id = None
             self._last_error = {
                 "type": error_type,
                 "message": message,

@@ -32,7 +32,7 @@ from setup_support.outputs import (
 )
 
 
-SETUP_VERSION = "0.6.0"
+SETUP_VERSION = "0.7.0"
 MINIMUM_PYTHON = (3, 10)
 PYSOCKS_BOOTSTRAP_VERSION = "1.7.1"
 REQUIRED_SUBMODULES = (
@@ -709,6 +709,7 @@ def ensure_runtime_directories(repository_root: Path) -> CheckResult:
     directories = (
         runtime_dir / "generated" / "grpc",
         runtime_dir / "logs",
+        runtime_dir / "logs" / "dcs",
         runtime_dir / "workspace",
         runtime_dir / "plugins" / "py",
         runtime_dir / "plugins" / "lua",
