@@ -56,14 +56,15 @@ For the current battle, prefer evidence in this order:
 
 ~~~text
 live DCS state and observed behavior
-  > typed current API results
-  > mission-runtime Lua results
+  > current typed RPC and focused mission-runtime Lua observations
   > current-session event history
   > static and reference knowledge
   > agent inference
 ~~~
 
 State uncertainty when sources do not establish a fact. Events are factual chronology, not a complete current-world snapshot. Logs are diagnostics, not battlefield truth.
+
+Prefer a typed RPC when it already exposes the required capability because its interface is structured, bounded, and discoverable. That interface preference does not make it categorically more truthful than a focused current mission-runtime Lua observation. When two live observation paths disagree, re-check the relevant runtime state, source contract, and observation context instead of mechanically trusting the typed path.
 
 For technical API and ecosystem authority, use the integration skill's stricter source order. Inspect current Harness source and tests for Harness behavior, generated protobuf descriptors and pinned DCS-gRPC source for RPC contracts, and pinned third_party source for upstream libraries.
 

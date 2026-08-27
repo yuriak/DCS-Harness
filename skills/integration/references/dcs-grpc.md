@@ -2,7 +2,9 @@
 
 ## Role
 
-DCS-gRPC is the live bridge between an external process and DCS. DCS Harness embeds and supervises that bridge, then presents its own stable API to agents. Prefer a typed RPC when one already models the desired operation.
+DCS-gRPC runs on the DCS side and exposes live mission capabilities over gRPC. DCS-Harness connects to it as an external client: it reads endpoint configuration, imports generated protobuf bindings, creates and caches the client channel and stubs, invokes services, and normalizes results and errors through its Agent-facing capabilities.
+
+DCS-Harness exposes those capabilities through its CLI and loopback resident HTTP server. It does not launch, embed, own, or supervise the DCS-side DCS-gRPC server or its lifecycle. Prefer a typed RPC when one already models the desired operation.
 
 ## Two live paths
 
@@ -33,6 +35,7 @@ Use the mission service's StreamEvents and GetSessionId definitions and the corr
 
 - Protobuf messages cross the external-process boundary.
 - Eval crosses into mission-side Lua and must return a representable result.
+- The Harness resident HTTP server and the DCS-side DCS-gRPC server are separate processes with separate lifecycle and transport boundaries.
 - A successful transport call does not by itself prove an optional mission library is loaded.
 - DCS-gRPC availability does not eliminate DCS mission context, pause state, or version sensitivity.
 - Keep agent-facing operations narrower than the full upstream RPC surface unless the product contract explicitly requires otherwise.

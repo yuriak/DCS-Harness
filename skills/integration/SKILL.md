@@ -13,12 +13,16 @@ The integration layers have different jobs:
 
 ~~~text
 External agent
-  -> DCS Harness gRPC API
-       -> typed DCS-gRPC RPCs
-       -> CustomService.Eval -> mission-side Lua
-                                  -> native DCS Lua
-                                  -> MIST, if the mission loaded it
-                                  -> MOOSE, if the mission loaded it
+  -> DCS-Harness capability interface (CLI or loopback HTTP)
+       -> grpc capability
+            -> DCS-gRPC client -> DCS-side DCS-gRPC server
+                 -> typed RPCs -> DCS mission runtime
+       -> lua capability
+            -> DCS-gRPC client -> DCS-side DCS-gRPC server
+                 -> CustomService.Eval -> mission-side Lua
+                      -> native DCS Lua
+                      -> MIST, if the mission loaded it
+                      -> MOOSE, if the mission loaded it
 
 Offline mission authoring
   -> pydcs -> .miz files
@@ -26,6 +30,8 @@ Offline mission authoring
 Static Lua authoring help
   -> dcs-lua-definitions
 ~~~
+
+DCS-Harness is not the DCS-gRPC server and does not own its lifecycle. Harness exposes Agent-facing capabilities and connects to the DCS-side DCS-gRPC server as an external client.
 
 Do not treat these layers as interchangeable. In particular, pydcs and dcs-lua-definitions do not provide live simulator access, while MIST and MOOSE exist only inside a mission that loads them.
 
@@ -38,6 +44,8 @@ Do not treat these layers as interchangeable. In particular, pydcs and dcs-lua-d
 5. Use MOOSE for complex, persistent, object-oriented mission orchestration when the mission loads MOOSE.
 6. Use pydcs to create or modify mission files before DCS loads them.
 7. Use dcs-lua-definitions for editor assistance and API discovery, then verify behavior against the running DCS version and pinned runtime sources.
+
+Typed RPC is usually the preferred interface when it covers the task because it provides structured schemas, bounded request and response types, descriptor discovery, and clearer errors. This is an interface-selection preference, not an absolute truth hierarchy: a current typed RPC result and a focused current mission-runtime Lua result are both live observations, and their relevance depends on what each path actually exposes and observes.
 
 ## Authority order
 
