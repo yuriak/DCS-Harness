@@ -6,6 +6,13 @@ dev_docs/
 Note.md
 dev_AGENTS.md
 
+# Private development overlay (independent repository, never a public submodule)
+/dev/
+
+# Local HIL coordination files
+/codex_checklist.md
+/human_checklist.md
+
 # Locally generated runtime artifacts
 runtime/venv/
 runtime/generated/
@@ -17,6 +24,10 @@ runtime/events/
 runtime/events.sqlite*
 runtime/setup_report.json
 runtime/server.json
+
+# Mission-loaded third-party Lua copies kept outside the public source tree
+/runtime/Moose_.lua
+/runtime/mist.lua
 
 # Python caches and tooling artifacts
 __pycache__/
