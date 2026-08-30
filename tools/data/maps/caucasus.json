@@ -1,0 +1,869 @@
+{
+  "schema_version": 1,
+  "id": "caucasus",
+  "name": "Caucasus",
+  "aliases": [
+    "CaucasusMap"
+  ],
+  "data_version": "2026-08-30.1",
+  "sources": {
+    "pydcs-airports": {
+      "type": "pydcs",
+      "revision": "e20f328390aecaac2a7f82444b4f5a96ac6bb2c3",
+      "paths": [
+        "third_party/pydcs/dcs/terrain/caucasus/airports.py",
+        "third_party/pydcs/dcs/terrain/caucasus/projection.py"
+      ],
+      "method": "Airport local positions transformed to WGS84 by the pinned Caucasus projection.",
+      "verified_at": "2026-08-30"
+    },
+    "wikidata-cities": {
+      "type": "Wikidata",
+      "url": "https://www.wikidata.org/",
+      "query_endpoint": "https://query.wikidata.org/sparql",
+      "license": "CC0-1.0",
+      "retrieved_at": "2026-08-30",
+      "method": "Curated entity ids queried for WGS84 coordinate property P625."
+    }
+  },
+  "locations": [
+    {
+      "id": "caucasus.airbase.anapa-vityazevo",
+      "kind": "airbase",
+      "name": "Anapa-Vityazevo",
+      "aliases": [
+        "Anapa Airport",
+        "Vityazevo"
+      ],
+      "latitude_deg": 45.0049480846,
+      "longitude_deg": 37.3478248831,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 12,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "22-04",
+            "ends": [
+              {
+                "name": "22",
+                "heading_deg": 220
+              },
+              {
+                "name": "04",
+                "heading_deg": 40
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.krasnodar-center",
+      "kind": "airbase",
+      "name": "Krasnodar-Center",
+      "aliases": [
+        "Krasnodar Center"
+      ],
+      "latitude_deg": 45.0869499332,
+      "longitude_deg": 38.9399846266,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 13,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "09-27",
+            "ends": [
+              {
+                "name": "09",
+                "heading_deg": 90
+              },
+              {
+                "name": "27",
+                "heading_deg": 270
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.novorossiysk",
+      "kind": "airbase",
+      "name": "Novorossiysk",
+      "aliases": [],
+      "latitude_deg": 44.6680961371,
+      "longitude_deg": 37.7782578208,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 14,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "22-04",
+            "ends": [
+              {
+                "name": "22",
+                "heading_deg": 220
+              },
+              {
+                "name": "04",
+                "heading_deg": 40
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.krymsk",
+      "kind": "airbase",
+      "name": "Krymsk",
+      "aliases": [],
+      "latitude_deg": 44.9679365471,
+      "longitude_deg": 37.9950302744,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 15,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "04-22",
+            "ends": [
+              {
+                "name": "04",
+                "heading_deg": 40
+              },
+              {
+                "name": "22",
+                "heading_deg": 220
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.maykop-khanskaya",
+      "kind": "airbase",
+      "name": "Maykop-Khanskaya",
+      "aliases": [
+        "Maykop",
+        "Khanskaya"
+      ],
+      "latitude_deg": 44.6812852207,
+      "longitude_deg": 40.0352543345,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 16,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "04-22",
+            "ends": [
+              {
+                "name": "04",
+                "heading_deg": 40
+              },
+              {
+                "name": "22",
+                "heading_deg": 220
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.gelendzhik",
+      "kind": "airbase",
+      "name": "Gelendzhik",
+      "aliases": [],
+      "latitude_deg": 44.5729007841,
+      "longitude_deg": 38.011614417,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 17,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "01-19",
+            "ends": [
+              {
+                "name": "01",
+                "heading_deg": 10
+              },
+              {
+                "name": "19",
+                "heading_deg": 190
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.sochi-adler",
+      "kind": "airbase",
+      "name": "Sochi-Adler",
+      "aliases": [
+        "Sochi Airport",
+        "Adler Airport"
+      ],
+      "latitude_deg": 43.4443541419,
+      "longitude_deg": 39.9410763448,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 18,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "06-24",
+            "ends": [
+              {
+                "name": "06",
+                "heading_deg": 60
+              },
+              {
+                "name": "24",
+                "heading_deg": 240
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.krasnodar-pashkovsky",
+      "kind": "airbase",
+      "name": "Krasnodar-Pashkovsky",
+      "aliases": [
+        "Krasnodar Pashkovsky"
+      ],
+      "latitude_deg": 45.0380082317,
+      "longitude_deg": 39.1881352399,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 19,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "23L-05R",
+            "ends": [
+              {
+                "name": "23L",
+                "heading_deg": 230
+              },
+              {
+                "name": "05R",
+                "heading_deg": 50
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.sukhumi-babushara",
+      "kind": "airbase",
+      "name": "Sukhumi-Babushara",
+      "aliases": [
+        "Sukhumi Airport",
+        "Babushara"
+      ],
+      "latitude_deg": 42.8610923403,
+      "longitude_deg": 41.1249986519,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 20,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "30-12",
+            "ends": [
+              {
+                "name": "30",
+                "heading_deg": 300
+              },
+              {
+                "name": "12",
+                "heading_deg": 120
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.gudauta",
+      "kind": "airbase",
+      "name": "Gudauta",
+      "aliases": [],
+      "latitude_deg": 43.1143270846,
+      "longitude_deg": 40.5697410759,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 21,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "15-33",
+            "ends": [
+              {
+                "name": "15",
+                "heading_deg": 150
+              },
+              {
+                "name": "33",
+                "heading_deg": 330
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.batumi",
+      "kind": "airbase",
+      "name": "Batumi",
+      "aliases": [],
+      "latitude_deg": 41.6095968462,
+      "longitude_deg": 41.6002369172,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 22,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "31-13",
+            "ends": [
+              {
+                "name": "31",
+                "heading_deg": 310
+              },
+              {
+                "name": "13",
+                "heading_deg": 130
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.senaki-kolkhi",
+      "kind": "airbase",
+      "name": "Senaki-Kolkhi",
+      "aliases": [
+        "Senaki-Kolkhida",
+        "Senaki Airport"
+      ],
+      "latitude_deg": 42.2408489548,
+      "longitude_deg": 42.0480142415,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 23,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "27-09",
+            "ends": [
+              {
+                "name": "27",
+                "heading_deg": 270
+              },
+              {
+                "name": "09",
+                "heading_deg": 90
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.kobuleti",
+      "kind": "airbase",
+      "name": "Kobuleti",
+      "aliases": [],
+      "latitude_deg": 41.9299190705,
+      "longitude_deg": 41.8632745063,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 24,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "25-07",
+            "ends": [
+              {
+                "name": "25",
+                "heading_deg": 250
+              },
+              {
+                "name": "07",
+                "heading_deg": 70
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.kutaisi",
+      "kind": "airbase",
+      "name": "Kutaisi",
+      "aliases": [],
+      "latitude_deg": 42.1776158279,
+      "longitude_deg": 42.4812921999,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 25,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "25-07",
+            "ends": [
+              {
+                "name": "25",
+                "heading_deg": 250
+              },
+              {
+                "name": "07",
+                "heading_deg": 70
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.mineralnye-vody",
+      "kind": "airbase",
+      "name": "Mineralnye Vody",
+      "aliases": [
+        "Mineralnye-Vody"
+      ],
+      "latitude_deg": 44.2278526037,
+      "longitude_deg": 43.0811917381,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 26,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "30-12",
+            "ends": [
+              {
+                "name": "30",
+                "heading_deg": 300
+              },
+              {
+                "name": "12",
+                "heading_deg": 120
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.nalchik",
+      "kind": "airbase",
+      "name": "Nalchik",
+      "aliases": [],
+      "latitude_deg": 43.514001711,
+      "longitude_deg": 43.6364512954,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 27,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "06-24",
+            "ends": [
+              {
+                "name": "06",
+                "heading_deg": 60
+              },
+              {
+                "name": "24",
+                "heading_deg": 240
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.mozdok",
+      "kind": "airbase",
+      "name": "Mozdok",
+      "aliases": [],
+      "latitude_deg": 43.7917106418,
+      "longitude_deg": 44.6058388222,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 28,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "26-08",
+            "ends": [
+              {
+                "name": "26",
+                "heading_deg": 260
+              },
+              {
+                "name": "08",
+                "heading_deg": 80
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.tbilisi-lochini",
+      "kind": "airbase",
+      "name": "Tbilisi-Lochini",
+      "aliases": [
+        "Tbilisi Airport",
+        "Lochini"
+      ],
+      "latitude_deg": 41.6670336639,
+      "longitude_deg": 44.9562880602,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 29,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "13R-31L",
+            "ends": [
+              {
+                "name": "13R",
+                "heading_deg": 130
+              },
+              {
+                "name": "31L",
+                "heading_deg": 310
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.soganlug",
+      "kind": "airbase",
+      "name": "Soganlug",
+      "aliases": [],
+      "latitude_deg": 41.6495424515,
+      "longitude_deg": 44.9383577429,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 30,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "14-32",
+            "ends": [
+              {
+                "name": "14",
+                "heading_deg": 140
+              },
+              {
+                "name": "32",
+                "heading_deg": 320
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.vaziani",
+      "kind": "airbase",
+      "name": "Vaziani",
+      "aliases": [],
+      "latitude_deg": 41.6290259037,
+      "longitude_deg": 45.0272308493,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 31,
+        "civilian": false,
+        "runways": [
+          {
+            "id": 1,
+            "name": "13R-31L",
+            "ends": [
+              {
+                "name": "13R",
+                "heading_deg": 130
+              },
+              {
+                "name": "31L",
+                "heading_deg": 310
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.airbase.beslan",
+      "kind": "airbase",
+      "name": "Beslan",
+      "aliases": [],
+      "latitude_deg": 43.2057061282,
+      "longitude_deg": 44.6058081426,
+      "elevation_m": null,
+      "metadata": {
+        "dcs_airport_id": 32,
+        "civilian": true,
+        "runways": [
+          {
+            "id": 1,
+            "name": "10-28",
+            "ends": [
+              {
+                "name": "10",
+                "heading_deg": 100
+              },
+              {
+                "name": "28",
+                "heading_deg": 280
+              }
+            ]
+          }
+        ]
+      },
+      "source_id": "pydcs-airports"
+    },
+    {
+      "id": "caucasus.city.anapa",
+      "kind": "city",
+      "name": "Anapa",
+      "aliases": [],
+      "latitude_deg": 44.894444444,
+      "longitude_deg": 37.316666666,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q15758",
+        "entity_url": "https://www.wikidata.org/wiki/Q15758"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.batumi",
+      "kind": "city",
+      "name": "Batumi",
+      "aliases": [],
+      "latitude_deg": 41.645833333,
+      "longitude_deg": 41.641666666,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q25475",
+        "entity_url": "https://www.wikidata.org/wiki/Q25475"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.gori",
+      "kind": "city",
+      "name": "Gori",
+      "aliases": [],
+      "latitude_deg": 41.981686111,
+      "longitude_deg": 44.112416666,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q19583",
+        "entity_url": "https://www.wikidata.org/wiki/Q19583"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.gudauta",
+      "kind": "city",
+      "name": "Gudauta",
+      "aliases": [],
+      "latitude_deg": 43.100833333,
+      "longitude_deg": 40.633055555,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q242593",
+        "entity_url": "https://www.wikidata.org/wiki/Q242593"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.kobuleti",
+      "kind": "city",
+      "name": "Kobuleti",
+      "aliases": [],
+      "latitude_deg": 41.811111111,
+      "longitude_deg": 41.775277777,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q328975",
+        "entity_url": "https://www.wikidata.org/wiki/Q328975"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.kutaisi",
+      "kind": "city",
+      "name": "Kutaisi",
+      "aliases": [],
+      "latitude_deg": 42.271666666,
+      "longitude_deg": 42.705555555,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q172415",
+        "entity_url": "https://www.wikidata.org/wiki/Q172415"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.novorossiysk",
+      "kind": "city",
+      "name": "Novorossiysk",
+      "aliases": [],
+      "latitude_deg": 44.716666666,
+      "longitude_deg": 37.766666666,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q15760",
+        "entity_url": "https://www.wikidata.org/wiki/Q15760"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.poti",
+      "kind": "city",
+      "name": "Poti",
+      "aliases": [],
+      "latitude_deg": 42.14194,
+      "longitude_deg": 41.67639,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q185345",
+        "entity_url": "https://www.wikidata.org/wiki/Q185345"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.senaki",
+      "kind": "city",
+      "name": "Senaki",
+      "aliases": [],
+      "latitude_deg": 42.268888888,
+      "longitude_deg": 42.067777777,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q320519",
+        "entity_url": "https://www.wikidata.org/wiki/Q320519"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.sochi",
+      "kind": "city",
+      "name": "Sochi",
+      "aliases": [],
+      "latitude_deg": 43.585277777,
+      "longitude_deg": 39.720277777,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q39420",
+        "entity_url": "https://www.wikidata.org/wiki/Q39420"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.sukhumi",
+      "kind": "city",
+      "name": "Sukhumi",
+      "aliases": [
+        "Sokhumi"
+      ],
+      "latitude_deg": 43.003611111,
+      "longitude_deg": 41.019166666,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q40811",
+        "entity_url": "https://www.wikidata.org/wiki/Q40811"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.tbilisi",
+      "kind": "city",
+      "name": "Tbilisi",
+      "aliases": [],
+      "latitude_deg": 41.7225,
+      "longitude_deg": 44.7925,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q994",
+        "entity_url": "https://www.wikidata.org/wiki/Q994"
+      },
+      "source_id": "wikidata-cities"
+    },
+    {
+      "id": "caucasus.city.zugdidi",
+      "kind": "city",
+      "name": "Zugdidi",
+      "aliases": [],
+      "latitude_deg": 42.508055555,
+      "longitude_deg": 41.8725,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q185336",
+        "entity_url": "https://www.wikidata.org/wiki/Q185336"
+      },
+      "source_id": "wikidata-cities"
+    }
+  ]
+}

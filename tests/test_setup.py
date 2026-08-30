@@ -115,6 +115,7 @@ class RuntimeTests(unittest.TestCase):
                 "generated/grpc",
                 "logs",
                 "logs/dcs",
+                "telemetry",
                 "workspace",
                 "plugins/py",
                 "plugins/lua",

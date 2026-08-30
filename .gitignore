@@ -21,6 +21,7 @@ runtime/workspace/
 runtime/plugins/
 runtime/memory/
 runtime/events/
+runtime/telemetry/
 runtime/events.sqlite*
 runtime/setup_report.json
 runtime/server.json

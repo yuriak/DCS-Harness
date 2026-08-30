@@ -510,6 +510,14 @@ def build_environment_data(
             "grpc_bindings": True,
             "grpc_live_connectivity": "not_tested",
         },
+        "telemetry": {
+            "enabled": True,
+            "sample_interval_seconds": 5,
+            "memory_retention_seconds": 1800,
+            "max_snapshots": 361,
+            "max_entities": 200000,
+            "persistence": False,
+        },
     }
 
 
@@ -710,6 +718,7 @@ def ensure_runtime_directories(repository_root: Path) -> CheckResult:
         runtime_dir / "generated" / "grpc",
         runtime_dir / "logs",
         runtime_dir / "logs" / "dcs",
+        runtime_dir / "telemetry",
         runtime_dir / "workspace",
         runtime_dir / "plugins" / "py",
         runtime_dir / "plugins" / "lua",

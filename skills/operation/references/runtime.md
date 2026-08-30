@@ -10,9 +10,9 @@ A stateless plugin can run in either direct or resident mode. Direct mode owns
 its context only for that invocation.
 
 A resident plugin owns state and runtime-managed background tasks. It requires
-the resident server. The current autostart resident plugins are **events** and
-**logs**; they start once for the server lifetime and stop during graceful
-shutdown.
+the resident server. The current autostart resident plugins are **events**,
+**logs**, and **telemetry**; they start once for the server lifetime and stop
+during graceful shutdown.
 
 Built-in plugins already started in a resident runtime are immutable until that
 server restarts. Runtime plugins may be reloaded only under the current plugin
@@ -39,15 +39,17 @@ DCS process log epoch
 -> logs
 
 DCS-gRPC mission/session
--> events
+-> events + telemetry
 
 future campaign continuity
 -> memory
 ~~~
 
-Events uses one SQLite ledger per numeric DCS-gRPC session. A mission reload,
-new mission, or DCS restart that changes the session ID changes the current
-ledger. Normal event commands do not merge historical sessions.
+Events uses one SQLite ledger per numeric DCS-gRPC session. Telemetry rotates
+current memory per session and can optionally use one SQLite archive per
+session. A mission reload, new mission, or DCS restart that changes the
+session ID changes both current contexts. Normal commands do not merge
+historical sessions.
 
 Logs uses timestamped raw mirrors for DCS and DCS-gRPC source-log epochs.
 Source replacement, recreation, or truncation begins a new current mirror.
@@ -68,6 +70,7 @@ Agent-owned:
 Harness-owned:
 
 - runtime/events/
+- runtime/telemetry/
 - runtime/logs/
 - runtime/server.json
 - generated bindings and setup artifacts

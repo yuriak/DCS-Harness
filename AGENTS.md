@@ -57,12 +57,13 @@ For the current battle, prefer evidence in this order:
 ~~~text
 live DCS state and observed behavior
   > current typed RPC and focused mission-runtime Lua observations
+  > current-session telemetry samples
   > current-session event history
   > static and reference knowledge
   > agent inference
 ~~~
 
-State uncertainty when sources do not establish a fact. Events are factual chronology, not a complete current-world snapshot. Logs are diagnostics, not battlefield truth.
+State uncertainty when sources do not establish a fact. Telemetry is sampled factual state, not tactical intent. Events are factual chronology, not a complete current-world snapshot. Logs are diagnostics, not battlefield truth.
 
 Prefer a typed RPC when it already exposes the required capability because its interface is structured, bounded, and discoverable. That interface preference does not make it categorically more truthful than a focused current mission-runtime Lua observation. When two live observation paths disagree, re-check the relevant runtime state, source contract, and observation context instead of mechanically trusting the typed path.
 
@@ -74,12 +75,12 @@ The three continuity horizons are distinct:
 
 ~~~text
 DCS process epoch          -> logs
-DCS-gRPC mission/session   -> events
+DCS-gRPC mission/session   -> events + telemetry
 future campaign continuity -> memory
 ~~~
 
 - A new DCS-gRPC session is a new current battle context. Re-establish live objects, player state, mission-loaded libraries, and relevant assumptions.
-- Event ledgers are isolated by session and are not automatically mixed into current queries.
+- Event ledgers and telemetry contexts are isolated by session and are not automatically mixed into current queries.
 - Logs normally describe diagnostics from the current DCS process epoch.
 - A Harness restart can occur within either upstream epoch; do not equate Harness process lifetime with DCS or mission lifetime.
 - runtime/memory/ is only a reserved placeholder for future campaign-level continuity across missions and sessions.
@@ -93,10 +94,11 @@ future campaign continuity -> memory
 | runtime/plugins/py/ | Agent-created task-local Python extensions. |
 | runtime/plugins/lua/ | Agent-created task-local mission Lua. |
 | runtime/events/ | Harness-owned per-session factual ledgers. |
+| runtime/telemetry/ | Harness-owned optional per-session factual archives. |
 | runtime/logs/ | Harness-owned diagnostics, mirrors, and lifecycle logs. |
 | runtime/memory/ | Reserved placeholder; no architecture yet. |
 
-Do not directly edit Harness-owned event databases or log mirrors during normal tasks. Query them through the appropriate capability. Preserve unrelated local runtime artifacts.
+Do not directly edit Harness-owned event/telemetry databases or log mirrors during normal tasks. Query them through the appropriate capability. Preserve unrelated local runtime artifacts.
 
 Durable reviewed capabilities live under tools/. Generated protobuf artifacts and local environment configuration are setup outputs, not hand-maintained domain knowledge.
 
@@ -143,8 +145,8 @@ The DCS-gRPC server bind address and Harness client endpoint are separate. Do no
 
 Load only the skill needed for the current work:
 
-- To operate, inspect, extend, or debug DCS-Harness—including live state, gRPC, Lua, events, logs, runtime workspace, plugins, backends, and recovery—read [skills/operation/SKILL.md](skills/operation/SKILL.md).
-- To understand or select DCS ecosystem layers—including DCS-gRPC, native DCS Lua, MIST, MOOSE, pydcs, and dcs-lua-definitions—read [skills/integration/SKILL.md](skills/integration/SKILL.md).
+- To operate, inspect, extend, or debug DCS-Harness—including Geo, Telemetry, live state, gRPC, Lua, events, logs, runtime workspace, plugins, backends, and recovery—read [skills/operation/SKILL.md](skills/operation/SKILL.md).
+- To understand or select DCS ecosystem layers—including Geo, Telemetry, DCS-gRPC, native DCS Lua, MIST, MOOSE, pydcs, and dcs-lua-definitions—read [skills/integration/SKILL.md](skills/integration/SKILL.md).
 - To act as a dynamic mission director, battlefield director, game master, or adaptive battle controller—read [skills/directing/SKILL.md](skills/directing/SKILL.md). Live directing normally also requires operation.
 
 Ordinary Python refactoring, unit-test fixes, setup maintenance, or repository documentation work should not automatically load all three skills merely because this is DCS-Harness.

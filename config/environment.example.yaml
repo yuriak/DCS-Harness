@@ -54,3 +54,11 @@ third_party:
 capabilities:
   grpc_bindings: null
   grpc_live_connectivity: not_tested
+
+telemetry:
+  enabled: true
+  sample_interval_seconds: 5
+  memory_retention_seconds: 1800
+  max_snapshots: 361
+  max_entities: 200000
+  persistence: false

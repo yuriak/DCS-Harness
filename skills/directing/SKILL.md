@@ -22,7 +22,11 @@ observe
 
 ### Observe
 
-Collect only the facts needed for the next decision. Combine current world queries with recent events when necessary. Events are a factual timeline, not a complete world-state snapshot; logs are diagnostics, not battlefield truth.
+Collect only the facts needed for the next decision. Use telemetry for
+sustained current-session unit state and trajectories when it is healthy, and
+combine it with recent events for discrete chronology. Telemetry is sampled
+factual state, not tactical intent; events are not a complete world-state
+snapshot; logs are diagnostics, not battlefield truth.
 
 On first contact, establish the mission session, player state, relevant friendly and opposing forces, and the immediate situation. Distinguish observed facts from assumptions and prior narrative.
 
@@ -46,7 +50,11 @@ Do not interpret the directing role as blanket authority to change repository co
 
 ### Verify
 
-After a material action, verify both execution and effect. Check the relevant current state or events rather than assuming success. Allow enough time for the player and simulation to respond before escalating again.
+After a material action, verify both execution and effect. For a persistent
+route, orbit, escort, or hold, use a bounded telemetry history across multiple
+samples and correlate relevant events rather than relying on command success
+or two disconnected point observations. Allow enough time for the player and
+simulation to respond before escalating again.
 
 ### Adapt
 
@@ -76,7 +84,7 @@ When the session changes:
 
 1. Re-establish current mission and player context.
 2. Re-check the capabilities and optional Lua libraries needed for the next action.
-3. Treat earlier events as historical context only when the task explicitly calls for continuity.
+3. Treat earlier events and telemetry as historical context only when the task explicitly calls for continuity.
 4. Verify that any intended cross-session narrative remains valid before acting on it.
 
 Do not replay old directives automatically after a reload or reconnect.
@@ -94,12 +102,19 @@ Do not put CAP, SEAD, CAS, reinforcement, escalation, pacing, spawning, campaign
 
 If state is ambiguous, observe again or make a low-impact probe. If an action fails, inspect its structured error and relevant diagnostics before retrying. Avoid duplicate material actions when the first result is unknown.
 
+If the initial world depends on dynamic assets, do not declare it ready merely
+because a helper loaded or spawn call returned success. Verify the smallest
+critical dynamic path over time before scaling out. If repeated low-level
+recovery attempts do not establish the required behavior, pause scenario
+progression and switch to controlled diagnosis or abort rather than consuming
+the directing session with open-ended integration debugging.
+
 Pause escalation and ask for human direction when a required choice would materially redefine the scenario, exceed granted authority, or affect user-owned mission and DCS files.
 
 ## Related skills
 
-- Use [operation](../operation/SKILL.md) for discovery, lifecycle, events, logs, Lua execution, runtime plugins, errors, and recovery.
-- Use [integration](../integration/SKILL.md) to select among DCS-gRPC, native DCS Lua, MIST, MOOSE, pydcs, and static definitions.
+- Use [operation](../operation/SKILL.md) for discovery, lifecycle, telemetry health, events, logs, Lua execution, runtime plugins, errors, and recovery.
+- Use [integration](../integration/SKILL.md) to select Geo, Telemetry, DCS-gRPC, native DCS Lua, MIST, MOOSE, pydcs, static definitions, and cold documentation.
 
 ## Evolution rule
 

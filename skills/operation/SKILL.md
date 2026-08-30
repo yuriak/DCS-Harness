@@ -3,8 +3,8 @@ name: operation
 description: >
   Operate, inspect, extend, and debug DCS-Harness during live DCS work.
   Use when querying DCS through Harness capabilities, invoking gRPC or Lua,
-  reading current events or logs, working with runtime plugins or workspace,
-  or diagnosing failed Harness operations.
+  reading current telemetry, events, or logs, working with runtime plugins or
+  workspace, or diagnosing failed Harness operations.
 ---
 
 # Operate DCS-Harness
@@ -17,6 +17,9 @@ reasoning loop.
 
 - **grpc** provides descriptor-driven, typed access to unary DCS-gRPC methods.
 - **lua** evaluates code in the current mission Lua environment.
+- **geo** provides maintained reference geography, calculations, units, and a
+  bounded live coordinate bridge.
+- **telemetry** samples bounded current-session factual unit state and history.
 - **events** records the factual chronology of the current DCS-gRPC session.
 - **logs** exposes diagnostics from the current DCS process-log epoch.
 - Runtime workspace and plugins hold task-local or experimental code.
@@ -50,6 +53,17 @@ Use **lua** when typed coverage is absent, native DCS scripting is required,
 mission-loaded MIST or MOOSE must be called, or a focused mission-runtime
 diagnostic is needed. Return JSON-safe primitives and tables rather than
 expecting Lua objects or functions to cross the boundary.
+
+Use **geo** for named reference locations, geographic calculations, unit
+conversion, and bounded live geographic/local conversion. Do not recreate a
+theatre projection in task-local code; read the
+[integration coordinate reference](../integration/references/coordinates-and-units.md)
+when axes, headings, or route points matter.
+
+Use **telemetry** for current-session unit snapshots and sustained trajectory
+questions. Check its collector and background-task status before treating a
+sample as current, and use bounded history rather than shell sleep plus two
+point queries.
 
 Use **events** to answer what factually happened in the current or last-known
 mission session. Check connection status before using it for live decisions.
@@ -120,9 +134,9 @@ capture the exact failure
 Do not use blind infinite retries, change several variables at once, or assume
 an action succeeded merely because the local client did not crash.
 
-If events status is disconnected, recent and query can still describe the
-last-known ledger. That ledger is not proof that the mission is currently
-active.
+If events is disconnected or telemetry is degraded/failed, their current
+session data can remain queryable. Last-known events or samples are not proof
+that the mission or unit state is currently active.
 
 ## Work within ownership boundaries
 
@@ -131,6 +145,8 @@ active.
 - runtime/plugins/lua/: Agent-created Lua files usable through the Lua
   capability.
 - runtime/events/: Harness-owned factual ledgers; do not edit in normal work.
+- runtime/telemetry/: Harness-owned optional per-session telemetry archives;
+  do not edit in normal work.
 - runtime/logs/: Harness-owned mirrors and lifecycle diagnostics; do not edit.
 - runtime/memory/: reserved placeholder; do not invent a memory system.
 
@@ -145,6 +161,8 @@ profiles without specific Human authorization.
 - Read [grpc.md](references/grpc.md) before discovering or calling typed RPCs.
 - Read [lua.md](references/lua.md) before Eval or mission-side Lua work.
 - Read [events.md](references/events.md) before interpreting event history.
+- Read [telemetry.md](references/telemetry.md) before using trajectories or
+  diagnosing collector freshness, lag, session rotation, or persistence.
 - Read [logs.md](references/logs.md) when diagnosing current DCS behavior.
 - Read [runtime-plugins.md](references/runtime-plugins.md) before creating a
   task-local capability.

@@ -45,7 +45,7 @@ DCS World
   + MOOSE
 ```
 
-MIST 和 MOOSE 是非常有价值的 mission-side integration，但它们**不是 DCS-Harness core 的强制依赖**。只配置 DCS-gRPC 时，Harness 仍然可以使用 typed RPC、native mission Lua、events 和 logs。
+MIST 和 MOOSE 是非常有价值的 mission-side integration，但它们**不是 DCS-Harness core 的强制依赖**。配置启用 Eval 的 DCS-gRPC 后，Harness 仍然可以使用 Geo、Telemetry、typed RPC、native mission Lua、events 和 logs。
 
 ### 1. 前置要求
 
@@ -206,7 +206,7 @@ Windows：
 runtime\venv\Scripts\python.exe tools\src\py\dcs_harness.py serve
 ```
 
-这个 resident Harness server 是一个本地 loopback service，用于托管 events、logs 等 stateful capability。它**不是** DCS-gRPC server；真正的 DCS-gRPC 仍然是 DCS 一侧独立运行的服务。
+这个 resident Harness server 是一个本地 loopback service，用于托管 events、logs、telemetry 等 stateful capability。它**不是** DCS-gRPC server；真正的 DCS-gRPC 仍然是 DCS 一侧独立运行的服务。
 
 ### 7. 验证 live connection
 
@@ -241,7 +241,7 @@ runtime/venv/bin/python tools/src/py/dcs_harness.py \
   lua eval
 ```
 
-检查 resident events / logs collector：
+检查 resident events / logs / telemetry collector：
 
 ```bash
 runtime/venv/bin/python tools/src/py/dcs_harness.py \
@@ -249,6 +249,9 @@ runtime/venv/bin/python tools/src/py/dcs_harness.py \
 
 runtime/venv/bin/python tools/src/py/dcs_harness.py \
   --backend auto logs status
+
+runtime/venv/bin/python tools/src/py/dcs_harness.py \
+  --backend auto telemetry status
 ```
 
 如果 `grpc services` 可以工作、Lua Eval 正常返回、resident capability 状态健康，那么最小 Harness 环境就已经打通。
@@ -398,6 +401,7 @@ DCS-Harness 是 DCS-side DCS-gRPC 服务的**外部 client**。Harness 自己的
 | `lua` | Mission-side Lua Eval，以及受控的 repository-local Lua file execution。 |
 | `events` | Resident、按 DCS-gRPC session 隔离的事实事件 chronology。 |
 | `logs` | Resident DCS / DCS-gRPC diagnostic log mirror、tail 与 search。 |
+| `telemetry` | Resident、按 current session 隔离的有界 unit snapshot 与事实 trajectory query。 |
 | Runtime plugins | Agent 创建的 task-local Python/Lua capability，用于重复但仍实验性的组合操作。 |
 | Agent skills | 面向 operation、integration 与 directing 的渐进式 Agent knowledge。 |
 | Memory | 预留给未来跨 mission 的 campaign continuity；当前尚未实现。 |
@@ -422,7 +426,7 @@ DCS process epoch
   -> logs
 
 DCS-gRPC mission/session
-  -> events
+  -> events + telemetry
 
 未来跨 mission campaign continuity
   -> memory
@@ -436,7 +440,9 @@ Harness 本身可以使用：
 - **server**：通过 resident loopback runtime 执行；
 - **auto**：resident server 可用时优先使用，否则按照当前实现进行 direct fallback。
 
-当前 resident runtime 会 autostart `events`、`logs` 等需要保持状态的 built-in capability。
+当前 resident runtime 会 autostart `events`、`logs` 与 `telemetry`。Telemetry 始终保留
+有界的 current-session memory；可通过 `telemetry.persistence` 开启按 session 隔离的
+SQLite persistence，normal query 不会因此暴露旧 battle。
 
 ### Repository structure
 
@@ -467,12 +473,13 @@ runtime/plugins/
   -> task-local Agent extensions
 
 runtime/events/
+runtime/telemetry/
 runtime/logs/
 runtime/server.json
   -> Harness-owned runtime state
 ```
 
-机器相关 environment config、generated protobuf bindings、logs、event database、virtual environment 以及 Agent workspace artifact 都默认被 Git ignore。
+机器相关 environment config、generated protobuf bindings、logs、event/telemetry database、virtual environment 以及 Agent workspace artifact 都默认被 Git ignore。
 
 ### Design principles
 

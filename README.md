@@ -45,7 +45,7 @@ Optional:
   + MOOSE
 ```
 
-MIST and MOOSE are useful mission-side integrations, but they are **not required** for the DCS-Harness core. With only DCS-gRPC configured, the Harness can still use typed RPCs, native mission Lua, events, and logs.
+MIST and MOOSE are useful mission-side integrations, but they are **not required** for the DCS-Harness core. With Eval-enabled DCS-gRPC configured, the Harness can still use Geo, Telemetry, typed RPCs, native mission Lua, events, and logs.
 
 ### 1. Prerequisites
 
@@ -206,7 +206,7 @@ On Windows:
 runtime\venv\Scripts\python.exe tools\src\py\dcs_harness.py serve
 ```
 
-The resident Harness server is a local loopback service used to host stateful capabilities such as events and logs. It is **not** the DCS-gRPC server; DCS-gRPC remains a separate DCS-side service.
+The resident Harness server is a local loopback service used to host stateful capabilities such as events, logs, and telemetry. It is **not** the DCS-gRPC server; DCS-gRPC remains a separate DCS-side service.
 
 ### 7. Verify the live connection
 
@@ -241,7 +241,7 @@ runtime/venv/bin/python tools/src/py/dcs_harness.py \
   lua eval
 ```
 
-Check the resident event and log collectors:
+Check the resident event, log, and telemetry collectors:
 
 ```bash
 runtime/venv/bin/python tools/src/py/dcs_harness.py \
@@ -249,6 +249,9 @@ runtime/venv/bin/python tools/src/py/dcs_harness.py \
 
 runtime/venv/bin/python tools/src/py/dcs_harness.py \
   --backend auto logs status
+
+runtime/venv/bin/python tools/src/py/dcs_harness.py \
+  --backend auto telemetry status
 ```
 
 If `grpc services` works, Lua Eval returns successfully, and the resident capabilities report healthy state, the minimum Harness environment is ready.
@@ -398,6 +401,7 @@ DCS-Harness is a **client** of the DCS-side DCS-gRPC service. Its own resident H
 | `lua` | Mission-side Lua Eval plus controlled repository-local Lua file execution. |
 | `events` | Resident, per-session factual chronology from DCS-gRPC event streaming. |
 | `logs` | Resident mirroring, tailing, and searching of current DCS / DCS-gRPC diagnostic logs. |
+| `telemetry` | Resident, bounded current-session unit snapshots and factual trajectory queries. |
 | Runtime plugins | Agent-created task-local Python/Lua capabilities for repeated experimental composition. |
 | Agent skills | Progressive operational, integration, and directing knowledge. |
 | Memory | Reserved for future campaign-level continuity; not implemented yet. |
@@ -422,7 +426,7 @@ DCS process epoch
   -> logs
 
 DCS-gRPC mission/session
-  -> events
+  -> events + telemetry
 
 future cross-mission campaign continuity
   -> memory
@@ -436,7 +440,9 @@ The Harness itself can run in:
 - **server** mode through the resident loopback runtime;
 - **auto** mode, which uses the resident server when available and otherwise follows the current direct fallback behavior.
 
-The resident runtime autostarts the current stateful built-ins such as `events` and `logs`.
+The resident runtime autostarts `events`, `logs`, and `telemetry`. Telemetry always
+keeps bounded current-session memory; optional per-session SQLite persistence is
+controlled by `telemetry.persistence` and does not expose old battles to normal queries.
 
 ### Repository structure
 
@@ -467,12 +473,13 @@ runtime/plugins/
   -> task-local Agent extensions
 
 runtime/events/
+runtime/telemetry/
 runtime/logs/
 runtime/server.json
   -> Harness-owned runtime state
 ```
 
-Local environment configuration, generated protobuf bindings, logs, event databases, virtual environments, and Agent workspace artifacts are excluded from Git.
+Local environment configuration, generated protobuf bindings, logs, event and telemetry databases, virtual environments, and Agent workspace artifacts are excluded from Git.
 
 ### Design principles
 

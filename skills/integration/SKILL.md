@@ -1,6 +1,6 @@
 ---
 name: integration
-description: Guide DCS Harness integration work across DCS-gRPC, mission-side DCS Lua, MIST, MOOSE, pydcs, and dcs-lua-definitions. Use when choosing an integration layer, tracing an external API to simulator behavior, writing or reviewing Eval snippets, or determining which pinned upstream source is authoritative. Do not use for routine start, stop, health, recovery, or operator procedures; use the operation skill for those.
+description: Guide DCS Harness integration work across Geo, Telemetry, DCS-gRPC, mission-side DCS Lua, MIST, MOOSE, pydcs, and dcs-lua-definitions. Use when choosing an integration layer, tracing an external API to simulator behavior, writing or reviewing Eval snippets, or determining which pinned upstream source is authoritative. Do not use for routine start, stop, health, recovery, or operator procedures; use the operation skill for those.
 ---
 
 # DCS Harness integration
@@ -37,13 +37,22 @@ Do not treat these layers as interchangeable. In particular, pydcs and dcs-lua-d
 
 ## Choose the integration layer
 
-1. Prefer a typed Harness or DCS-gRPC operation when it already expresses the required live action or query.
-2. Use CustomService.Eval for a narrowly scoped live capability that is only available in mission-side Lua.
-3. Use native DCS Lua for simple simulator facts and actions.
-4. Use MIST for mission utilities, databases, scheduling, routing, and table-oriented helpers when the mission loads MIST.
-5. Use MOOSE for complex, persistent, object-oriented mission orchestration when the mission loads MOOSE.
-6. Use pydcs to create or modify mission files before DCS loads them.
-7. Use dcs-lua-definitions for editor assistance and API discovery, then verify behavior against the running DCS version and pinned runtime sources.
+1. Use `geo` for maintained reference geography, coordinate calculations,
+   canonical unit conversion, and bounded current-mission LL/local conversion.
+2. Use `telemetry` for sampled current-session unit state and sustained
+   trajectory questions; do not replace it with shell sleeps and point reads.
+3. Prefer another typed Harness or DCS-gRPC operation when it already
+   expresses the required live action or query.
+4. Use CustomService.Eval for a narrowly scoped live capability that is only
+   available in mission-side Lua.
+5. Use native DCS Lua for simple simulator facts and actions.
+6. Use MIST for mission utilities, databases, scheduling, routing, and
+   table-oriented helpers when the mission loads MIST.
+7. Use MOOSE for complex, persistent, object-oriented mission orchestration
+   when the mission loads MOOSE.
+8. Use pydcs to create or modify mission files before DCS loads them.
+9. Use dcs-lua-definitions for editor assistance and API discovery, then
+   verify behavior against the running DCS version and pinned runtime sources.
 
 Typed RPC is usually the preferred interface when it covers the task because it provides structured schemas, bounded request and response types, descriptor discovery, and clearer errors. This is an interface-selection preference, not an absolute truth hierarchy: a current typed RPC result and a focused current mission-runtime Lua result are both live observations, and their relevance depends on what each path actually exposes and observes.
 
@@ -64,10 +73,19 @@ Record a version-sensitive conclusion rather than silently generalizing it.
 1. State whether the task is live runtime control, mission-side scripting, offline mission authoring, or static API research.
 2. Identify the boundary crossed and the data shape on each side.
 3. Read the relevant focused reference below.
-4. Inspect the exact pinned source paths named by that reference before asserting an API signature.
-5. For Eval, keep Lua snippets small and return JSON-safe facts rather than framework objects.
-6. Confirm optional mission libraries are actually loaded; repository submodules do not load them into DCS.
-7. Test the narrowest possible behavior, preserving the human-authorization boundaries described by the operation skill.
+4. Check whether Geo or Telemetry already provides the maintained factual
+   operation before designing a new adapter.
+5. Inspect the exact pinned source paths named by that reference before asserting an API signature.
+6. For Eval, keep Lua snippets small and return JSON-safe facts rather than framework objects.
+7. Confirm optional mission libraries are actually loaded; repository submodules do not load them into DCS.
+8. Test the narrowest possible behavior, preserving the human-authorization boundaries described by the operation skill.
+
+When the focused local references cannot answer an interface question and Web
+search is available, consult upstream official documentation or a credible
+community reference before undertaking broad source archaeology or repeated
+live trial-and-error. External documentation is a knowledge source, not
+simulator truth; current supported behavior, Harness contracts, and pinned
+source retain their higher authority.
 
 ## Diagnose the boundary first
 
@@ -95,6 +113,11 @@ Use a narrow Eval probe to learn uncertain mission behavior. If the same action 
 - [MOOSE](references/moose.md): object-oriented mission orchestration.
 - [pydcs](references/pydcs.md): offline mission creation and editing.
 - [dcs-lua-definitions](references/dcs-lua-definitions.md): static Lua language-server definitions.
+- [Coordinates and units](references/coordinates-and-units.md): world/route axes, geographic conversion, headings, and canonical units.
+- [World entities](references/world-entities.md): country/coalition, physical identity, airbases, and session boundaries.
+- [Dynamic aircraft and tasking](references/dynamic-aircraft-and-tasking.md): spawn readiness, routes, controller tasks, orbit shape, and sustained verification.
+- [Observation and verification](references/observation-and-verification.md): evidence semantics, time-series verification, and recovery discipline.
+- [Cold source registry](references/cold-sources.md): pinned sources, upstream/community discovery, license status, and Hoggit cache policy.
 
 For setup, process lifecycle, health checks, recovery, logs, and operator safety, use [the operation skill](../operation/SKILL.md).
 
