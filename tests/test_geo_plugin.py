@@ -142,19 +142,45 @@ class GeoCatalogTests(unittest.TestCase):
     def setUp(self) -> None:
         self.registry = GeoCatalogRegistry(REPOSITORY_ROOT)
 
-    def test_caucasus_catalog_contains_all_pinned_airbases_and_landmarks(self) -> None:
+    def test_caucasus_catalog_contains_pinned_and_reviewed_locations(self) -> None:
         maps = self.registry.maps()
         self.assertEqual(len(maps), 1)
         caucasus = maps[0]
         self.assertEqual(caucasus["id"], "caucasus")
-        self.assertEqual(caucasus["kinds"], {"airbase": 21, "city": 13})
-        self.assertEqual(caucasus["location_count"], 34)
+        self.assertEqual(caucasus["data_version"], "2026-08-31.1")
+        self.assertEqual(
+            caucasus["kinds"],
+            {
+                "airbase": 21,
+                "bay": 2,
+                "cape": 1,
+                "city": 13,
+                "gorge": 1,
+                "hydroelectric-complex": 1,
+                "lake": 2,
+                "mountain": 2,
+                "mountain-pass": 4,
+                "port": 5,
+                "reservoir": 5,
+                "river-mouth": 4,
+                "valley": 1,
+            },
+        )
+        self.assertEqual(caucasus["location_count"], 62)
         self.assertEqual(
             caucasus["sources"]["pydcs-airports"]["revision"],
             "e20f328390aecaac2a7f82444b4f5a96ac6bb2c3",
         )
         self.assertEqual(
             caucasus["sources"]["wikidata-cities"]["license"], "CC0-1.0"
+        )
+        self.assertEqual(
+            caucasus["sources"]["wikidata-operational-landmarks"]["license"],
+            "CC0-1.0",
+        )
+        self.assertEqual(
+            caucasus["sources"]["rosmorport-seaports"]["organization"],
+            "FSUE Rosmorport",
         )
 
     def test_lookup_exact_alias_ambiguous_and_missing(self) -> None:
@@ -199,6 +225,25 @@ class GeoCatalogTests(unittest.TestCase):
         limited = self.registry.search("Caucasus", "a", limit=1)
         self.assertEqual(limited["count"], 1)
         self.assertTrue(limited["truncated"])
+
+    def test_operational_landmark_alias_elevation_and_provenance(self) -> None:
+        poti_port = self.registry.lookup(
+            "Caucasus", "Port of Poti", kind="port"
+        )
+        self.assertEqual(poti_port["id"], "caucasus.port.poti-sea-port")
+        self.assertEqual(poti_port["source"]["type"], "Wikidata")
+        self.assertEqual(poti_port["source"]["license"], "CC0-1.0")
+        self.assertEqual(poti_port["metadata"]["wikidata_id"], "Q2917500")
+
+        elbrus = self.registry.lookup("Caucasus", "Elbrus", kind="mountain")
+        self.assertEqual(elbrus["id"], "caucasus.mountain.elbrus")
+        self.assertEqual(elbrus["elevation_m"], 5642.0)
+
+        inguri = self.registry.lookup(
+            "Caucasus", "Inguri Mouth", kind="river-mouth"
+        )
+        self.assertEqual(inguri["id"], "caucasus.river-mouth.enguri")
+        self.assertEqual(inguri["metadata"]["coordinate_role"], "river_mouth")
 
     def test_nearest_airbase(self) -> None:
         gudauta = self.registry.lookup(

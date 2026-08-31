@@ -13,7 +13,15 @@ from typing import Any
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = REPOSITORY_ROOT / "tools" / "data" / "maps" / "caucasus.json"
-DATA_VERSION = "2026-08-30.1"
+OPERATIONAL_LANDMARKS_PATH = (
+    REPOSITORY_ROOT
+    / "tools"
+    / "data"
+    / "maps"
+    / "sources"
+    / "caucasus-operational-landmarks.json"
+)
+DATA_VERSION = "2026-08-31.1"
 
 AIRBASE_ALIASES = {
     "Anapa-Vityazevo": ["Anapa Airport", "Vityazevo"],
@@ -64,6 +72,29 @@ def pydcs_revision() -> str:
         text=True,
     )
     return completed.stdout.strip()
+
+
+def operational_landmark_patch() -> dict[str, Any]:
+    value = json.loads(OPERATIONAL_LANDMARKS_PATH.read_text(encoding="utf-8"))
+    expected_header = {
+        "patch_schema_version": 1,
+        "target_catalog": "caucasus",
+        "target_catalog_schema_version": 1,
+    }
+    if any(value.get(key) != expected for key, expected in expected_header.items()):
+        raise ValueError(
+            f"operational landmark source has an unexpected target or schema: "
+            f"{OPERATIONAL_LANDMARKS_PATH}"
+        )
+    if not isinstance(value.get("source_additions"), dict) or not value[
+        "source_additions"
+    ]:
+        raise ValueError("operational landmark source additions must be non-empty")
+    if not isinstance(value.get("location_additions"), list) or not value[
+        "location_additions"
+    ]:
+        raise ValueError("operational landmark location additions must be non-empty")
+    return value
 
 
 def build_catalog() -> dict[str, Any]:
@@ -124,6 +155,30 @@ def build_catalog() -> dict[str, Any]:
         }
         for name, aliases, latitude, longitude, wikidata_id in LANDMARKS
     ]
+    operational_patch = operational_landmark_patch()
+    operational_sources = operational_patch["source_additions"]
+    operational_landmarks = operational_patch["location_additions"]
+    base_source_ids = {"pydcs-airports", "wikidata-cities"}
+    source_collisions = base_source_ids.intersection(operational_sources)
+    if source_collisions:
+        raise ValueError(
+            "operational landmark source ids collide with catalog sources: "
+            + ", ".join(sorted(source_collisions))
+        )
+    base_location_ids = {item["id"] for item in airports + landmarks}
+    operational_ids = [item.get("id") for item in operational_landmarks]
+    duplicate_operational_ids = {
+        identifier
+        for identifier in operational_ids
+        if operational_ids.count(identifier) > 1
+    }
+    location_collisions = base_location_ids.intersection(operational_ids)
+    if duplicate_operational_ids or location_collisions:
+        collisions = duplicate_operational_ids.union(location_collisions)
+        raise ValueError(
+            "operational landmark ids are duplicated or collide with the catalog: "
+            + ", ".join(sorted(str(identifier) for identifier in collisions))
+        )
     return {
         "schema_version": 1,
         "id": "caucasus",
@@ -152,8 +207,9 @@ def build_catalog() -> dict[str, Any]:
                 "retrieved_at": "2026-08-30",
                 "method": "Curated entity ids queried for WGS84 coordinate property P625.",
             },
+            **operational_sources,
         },
-        "locations": airports + landmarks,
+        "locations": airports + landmarks + operational_landmarks,
     }
 
 

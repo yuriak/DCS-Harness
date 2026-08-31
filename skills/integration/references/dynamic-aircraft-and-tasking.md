@@ -22,6 +22,14 @@ does not require a global named `MOOSE`. Probe required classes such as
 `BASE`, `SPAWN`, or `GROUP` individually; do not turn that example list into a
 universal readiness test.
 
+**[verified current-version behavior]** In the targeted HIL on DCS
+2.9.29.27278, the mission exposed MIST 4.5.126 and the MOOSE `BASE`, `SPAWN`,
+`GROUP`, and `_DATABASE` tables. The same symbols were reacquired after a
+mission reload rather than assumed to survive the DCS-gRPC session boundary.
+Probe the exact function or class needed by the current adapter in every new
+session; a version marker or one framework table does not prove every required
+surface is usable.
+
 ## Spawn data and routes
 
 **[stable API fact]** `coalition.addGroup` accepts a country, group category,
@@ -40,10 +48,23 @@ and landed. Event evidence proves those landings, but the run changed several
 route/task variables and does not prove that every single-point route always
 causes RTB.
 
-**[known caveat]** Treat a nontrivial continuing route or persistent task as a
-precondition for sustained airborne behavior, then verify it over time. Do
-not promote the preceding observation into a universal DCS rule until the
-targeted dynamic-aircraft HIL is completed.
+**[verified current-version behavior]** In the targeted HIL, a dynamically
+created KJ-2000 with four explicit turning points remained airborne for more
+than three minutes at approximately 7,000 m and 180 m/s, began the expected
+waypoint turn, and produced no landing or RTB event before retask. This proves
+that the tested multi-point route shape was sufficient for that controlled
+run. It does not prove that four points, that aircraft type, or those values
+are universally required.
+
+**[project convention]** Give continuing airborne behavior a nontrivial route
+or persistent task appropriate to the aircraft, then verify the result over
+the needed horizon. Do not infer a universal single-point-route rule from the
+failed dogfooding or infer a universal route recipe from the successful HIL.
+
+**[known caveat]** The HIL KJ-2000 flew and accepted tasking, but current DCS
+logs also reported missing livery files and a corrupt damage model. Flight and
+task evidence does not validate that aircraft's visual assets or damage model;
+use a cleaner disposable support type when those surfaces matter.
 
 ## Controller task model
 
@@ -56,6 +77,26 @@ the task queue. MIST `goRoute` constructs a DCS `Mission` task and passes it to
 Its general `TaskOrbit` changes to `RACE_TRACK` only when a second coordinate
 is supplied, and then emits `point2`. A race-track adapter must therefore
 provide and validate both ends rather than only changing the pattern label.
+
+**[verified current-version behavior]** A group created through native
+`coalition.addGroup` existed immediately, while `GROUP:FindByName` was not yet
+ready in the same Eval call. One later bounded lookup succeeded after MOOSE
+registered the dynamic group. Treat native DCS existence and framework-wrapper
+readiness as separate states; report not-ready and retry only the wrapper-bound
+step instead of spawning a duplicate group.
+
+**[verified current-version behavior]** The targeted HIL used the live MOOSE
+`GROUP` wrapper to build and `SetTask` a one-point Circle Orbit. Subsequent
+telemetry showed sustained heading and position changes around the orbit while
+altitude and speed remained plausible. This validates the tested Circle path;
+the pinned two-coordinate requirement remains authoritative for Race-Track.
+
+**[verified current-version behavior]** A dynamically registered two-ship
+J-11A group reported `OptionROEHoldFirePossible=true`, accepted
+`OptionROEHoldFire`, retained a controller task, and remained on its initial
+route during the focused observation window. No hostile engagement occurred,
+so this proves option acceptance and sustained flight, not a weapons-release
+outcome under combat conditions.
 
 **[known caveat]** Task APIs do not provide a universal readable mirror of
 all current AI intent. The pinned static `Controller` definition contains
@@ -81,11 +122,32 @@ Use telemetry history rather than shell sleep followed by two unrelated
 position reads. Correlate discrete events and logs where they add independent
 evidence.
 
+**[verified current-version behavior]** The HIL destroyed one support group,
+waited for a complete telemetry snapshot to observe its absence, then spawned
+the same group and unit names once. DCS assigned new group/unit IDs, telemetry
+assigned a new `instance_id`, and events recorded a new birth. For lifecycle
+verification, require an observed absence between generations and use physical
+identity rather than treating a reused name as continuity.
+
 ## Readiness and recovery
 
 **[project convention]** “Helper loaded” and “initial world verified” are
 different readiness states. Validate one disposable minimal aircraft or one
 formal group before creating the rest of a dynamic initial world.
+
+The successful targeted path established these distinct checkpoints:
+
+1. mission library symbols and the exact required methods are available;
+2. the native group and expected units exist;
+3. any required MOOSE wrapper has registered;
+4. telemetry establishes sustained route behavior over an appropriate window;
+5. a retask is followed by a new sustained trajectory; and
+6. events and current diagnostics do not instead show landing, destruction,
+   or a task/framework failure.
+
+The three-minute support-aircraft window was suitable evidence for this HIL,
+not a universal readiness duration. Choose the observation horizon according
+to the behavior being claimed.
 
 Change one variable per recovery attempt. If the same low-level path keeps
 failing, stop live scenario progression, preserve structured evidence, and

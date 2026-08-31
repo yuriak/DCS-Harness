@@ -1,0 +1,508 @@
+{
+  "patch_schema_version": 1,
+  "target_catalog": "caucasus",
+  "target_catalog_schema_version": 1,
+  "prepared_at": "2026-08-31",
+  "integration": {
+    "target_path": "tools/data/maps/caucasus.json",
+    "merge_source_additions_into": "sources",
+    "append_location_additions_to": "locations",
+    "recommended_data_version_bump": true,
+    "notes": [
+      "Do not replace existing pydcs-airports or wikidata-cities entries.",
+      "Run the existing Geo catalog loader and tests after merging.",
+      "This set intentionally omits candidates whose public coordinate sources disagree materially, including Batumi Bay and Pitsunda Bay."
+    ]
+  },
+  "source_additions": {
+    "wikidata-operational-landmarks": {
+      "type": "Wikidata",
+      "url": "https://www.wikidata.org/",
+      "license": "CC0-1.0",
+      "retrieved_at": "2026-08-31",
+      "method": "Manually curated operational landmarks. Coordinates/elevations come from cited Wikidata entity statements; river-mouth points use the coordinate explicitly marked as river mouth."
+    },
+    "rosmorport-seaports": {
+      "type": "official_port_authority",
+      "organization": "FSUE Rosmorport",
+      "url": "https://rosmorport.com/filials/nvr_seaports/",
+      "retrieved_at": "2026-08-31",
+      "method": "Official seaport location published by Rosmorport."
+    }
+  },
+  "location_additions": [
+    {
+      "id": "caucasus.port.poti-sea-port",
+      "kind": "port",
+      "name": "Poti Sea Port",
+      "aliases": [
+        "Port of Poti",
+        "Poti Port"
+      ],
+      "latitude_deg": 42.1588888889,
+      "longitude_deg": 41.6583333333,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q2917500",
+        "entity_url": "https://www.wikidata.org/wiki/Q2917500"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.port.batumi-seaport",
+      "kind": "port",
+      "name": "Batumi Seaport",
+      "aliases": [
+        "Batumi Sea Port",
+        "Port of Batumi",
+        "Batumi Port"
+      ],
+      "latitude_deg": 41.6473261111,
+      "longitude_deg": 41.6574311111,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q30968284",
+        "entity_url": "https://www.wikidata.org/wiki/Q30968284"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.port.kulevi-oil-terminal",
+      "kind": "port",
+      "name": "Kulevi Oil Terminal",
+      "aliases": [
+        "Kulevi Terminal",
+        "Kulevi Port"
+      ],
+      "latitude_deg": 42.27,
+      "longitude_deg": 41.64,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q367859",
+        "entity_url": "https://www.wikidata.org/wiki/Q367859"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.port.supsa-marine-terminal",
+      "kind": "port",
+      "name": "Supsa Marine Terminal",
+      "aliases": [
+        "Supsa Terminal",
+        "Supsa Oil Terminal"
+      ],
+      "latitude_deg": 42.1,
+      "longitude_deg": 41.7166666667,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q111386435",
+        "entity_url": "https://www.wikidata.org/wiki/Q111386435"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.port.sochi-seaport",
+      "kind": "port",
+      "name": "Sochi Seaport",
+      "aliases": [
+        "Port of Sochi",
+        "Sochi Sea Port"
+      ],
+      "latitude_deg": 43.5833333333,
+      "longitude_deg": 39.7166666667,
+      "elevation_m": null,
+      "metadata": {
+        "source_url": "https://rosmorport.com/filials/nvr_seaports/",
+        "coordinate_precision": "1 arcminute",
+        "note": "Official Rosmorport published seaport location."
+      },
+      "source_id": "rosmorport-seaports"
+    },
+    {
+      "id": "caucasus.bay.gelendzhik",
+      "kind": "bay",
+      "name": "Gelendzhik Bay",
+      "aliases": [
+        "Gelendzhikskaya Bay",
+        "Bukhta Gelendzhikskaya"
+      ],
+      "latitude_deg": 44.5683333333,
+      "longitude_deg": 38.0494444444,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q2589842",
+        "entity_url": "https://www.wikidata.org/wiki/Q2589842"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.bay.tsemes",
+      "kind": "bay",
+      "name": "Tsemes Bay",
+      "aliases": [
+        "Tsemess Bay",
+        "Novorossiysk Bay",
+        "Bukhta Novorossiyskaya"
+      ],
+      "latitude_deg": 44.7066666667,
+      "longitude_deg": 37.8130555556,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q944037",
+        "entity_url": "https://www.wikidata.org/wiki/Q944037"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.cape.idokopas",
+      "kind": "cape",
+      "name": "Cape Idokopas",
+      "aliases": [
+        "Mys Idokopas",
+        "Idokopas",
+        "Cape of Idokopas"
+      ],
+      "latitude_deg": 44.4180555556,
+      "longitude_deg": 38.2072222222,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q37881745",
+        "entity_url": "https://www.wikidata.org/wiki/Q37881745"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.lake.ritsa",
+      "kind": "lake",
+      "name": "Lake Ritsa",
+      "aliases": [
+        "Ritsa"
+      ],
+      "latitude_deg": 43.4811111111,
+      "longitude_deg": 40.5413888889,
+      "elevation_m": 884,
+      "metadata": {
+        "wikidata_id": "Q946194",
+        "entity_url": "https://www.wikidata.org/wiki/Q946194"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.lake.paliastomi",
+      "kind": "lake",
+      "name": "Lake Paliastomi",
+      "aliases": [
+        "Paliastomi Lake"
+      ],
+      "latitude_deg": 42.1230555556,
+      "longitude_deg": 41.7297222222,
+      "elevation_m": 0,
+      "metadata": {
+        "wikidata_id": "Q1906201",
+        "entity_url": "https://www.wikidata.org/wiki/Q1906201"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.reservoir.shaori",
+      "kind": "reservoir",
+      "name": "Shaori Reservoir",
+      "aliases": [
+        "Shaori Lake",
+        "Shaori Water Reservoir"
+      ],
+      "latitude_deg": 42.4227777778,
+      "longitude_deg": 43.0769444444,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q24682231",
+        "entity_url": "https://www.wikidata.org/wiki/Q24682231"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.reservoir.zhinvali",
+      "kind": "reservoir",
+      "name": "Zhinvali Reservoir",
+      "aliases": [
+        "Jinvali Reservoir"
+      ],
+      "latitude_deg": 42.1505555556,
+      "longitude_deg": 44.7729722222,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q24687340",
+        "entity_url": "https://www.wikidata.org/wiki/Q24687340"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.reservoir.gali",
+      "kind": "reservoir",
+      "name": "Gali Reservoir",
+      "aliases": [],
+      "latitude_deg": 42.6541111111,
+      "longitude_deg": 41.8018611111,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q24687358",
+        "entity_url": "https://www.wikidata.org/wiki/Q24687358"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.reservoir.tkibuli",
+      "kind": "reservoir",
+      "name": "Tkibuli Reservoir",
+      "aliases": [],
+      "latitude_deg": 42.2957222222,
+      "longitude_deg": 42.9294166667,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q4459019",
+        "entity_url": "https://www.wikidata.org/wiki/Q4459019"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.reservoir.tbilisi",
+      "kind": "reservoir",
+      "name": "Tbilisi Reservoir",
+      "aliases": [
+        "Tbilisi Sea",
+        "Samgori Reservoir"
+      ],
+      "latitude_deg": 41.7494444444,
+      "longitude_deg": 44.8455555556,
+      "elevation_m": 540,
+      "metadata": {
+        "wikidata_id": "Q1899389",
+        "entity_url": "https://www.wikidata.org/wiki/Q1899389"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.mountain.elbrus",
+      "kind": "mountain",
+      "name": "Mount Elbrus",
+      "aliases": [
+        "Elbrus",
+        "Elbruz",
+        "Mount Elbruz",
+        "Mingi Tau"
+      ],
+      "latitude_deg": 43.35254,
+      "longitude_deg": 42.437875,
+      "elevation_m": 5642,
+      "metadata": {
+        "wikidata_id": "Q43105",
+        "entity_url": "https://www.wikidata.org/wiki/Q43105"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.mountain.kazbek",
+      "kind": "mountain",
+      "name": "Mount Kazbek",
+      "aliases": [
+        "Kazbek",
+        "Kazbegi"
+      ],
+      "latitude_deg": 42.6969444444,
+      "longitude_deg": 44.5188888889,
+      "elevation_m": 5033,
+      "metadata": {
+        "wikidata_id": "Q207680",
+        "entity_url": "https://www.wikidata.org/wiki/Q207680"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.pass.jvari",
+      "kind": "mountain-pass",
+      "name": "Jvari Pass",
+      "aliases": [
+        "Cross Pass"
+      ],
+      "latitude_deg": 42.5045780556,
+      "longitude_deg": 44.4539369444,
+      "elevation_m": 2379,
+      "metadata": {
+        "wikidata_id": "Q1609173",
+        "entity_url": "https://www.wikidata.org/wiki/Q1609173"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.pass.mamison",
+      "kind": "mountain-pass",
+      "name": "Mamison Pass",
+      "aliases": [],
+      "latitude_deg": 42.7055555556,
+      "longitude_deg": 43.7944444444,
+      "elevation_m": 2911,
+      "metadata": {
+        "wikidata_id": "Q2981976",
+        "entity_url": "https://www.wikidata.org/wiki/Q2981976"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.pass.marukhi",
+      "kind": "mountain-pass",
+      "name": "Marukhi Pass",
+      "aliases": [
+        "Pereval Marukhskiy"
+      ],
+      "latitude_deg": 43.3661111111,
+      "longitude_deg": 41.3838888889,
+      "elevation_m": 2746,
+      "metadata": {
+        "wikidata_id": "Q3651427",
+        "entity_url": "https://www.wikidata.org/wiki/Q3651427"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.pass.roki",
+      "kind": "mountain-pass",
+      "name": "Roki Pass",
+      "aliases": [
+        "Pereval Rokskiy"
+      ],
+      "latitude_deg": 42.6119388889,
+      "longitude_deg": 44.1349388889,
+      "elevation_m": 2996,
+      "metadata": {
+        "wikidata_id": "Q2604922",
+        "entity_url": "https://www.wikidata.org/wiki/Q2604922"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.gorge.darial",
+      "kind": "gorge",
+      "name": "Darial Gorge",
+      "aliases": [
+        "Pass of Dariel",
+        "Caucasian Gates"
+      ],
+      "latitude_deg": 42.7447222222,
+      "longitude_deg": 44.6225,
+      "elevation_m": 1447,
+      "metadata": {
+        "wikidata_id": "Q1165879",
+        "entity_url": "https://www.wikidata.org/wiki/Q1165879"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.valley.kodori",
+      "kind": "valley",
+      "name": "Kodori Valley",
+      "aliases": [],
+      "latitude_deg": 43.1,
+      "longitude_deg": 41.8,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q610055",
+        "entity_url": "https://www.wikidata.org/wiki/Q610055"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.infrastructure.enguri-hpp",
+      "kind": "hydroelectric-complex",
+      "name": "Enguri HPP",
+      "aliases": [
+        "Enguri Hydroelectric Power Plant",
+        "Enguri Hydro Power Plant",
+        "Enguri Hydroelectric Complex",
+        "Inguri HPP",
+        "Inguri Hydroelectric Power Plant"
+      ],
+      "latitude_deg": 42.7591666667,
+      "longitude_deg": 42.0319444444,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q162887",
+        "entity_url": "https://www.wikidata.org/wiki/Q162887"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.river-mouth.bzyb",
+      "kind": "river-mouth",
+      "name": "Bzyb River Mouth",
+      "aliases": [
+        "Bzyb Mouth"
+      ],
+      "latitude_deg": 43.188,
+      "longitude_deg": 40.2808888889,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q1972264",
+        "entity_url": "https://www.wikidata.org/wiki/Q1972264",
+        "parent_feature": "Bzyb River",
+        "coordinate_role": "river_mouth"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.river-mouth.kodori",
+      "kind": "river-mouth",
+      "name": "Kodori River Mouth",
+      "aliases": [
+        "Kodori Mouth"
+      ],
+      "latitude_deg": 42.8194444444,
+      "longitude_deg": 41.1302777778,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q1048890",
+        "entity_url": "https://www.wikidata.org/wiki/Q1048890",
+        "parent_feature": "Kodori River",
+        "coordinate_role": "river_mouth"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.river-mouth.enguri",
+      "kind": "river-mouth",
+      "name": "Enguri River Mouth",
+      "aliases": [
+        "Inguri River Mouth",
+        "Enguri Mouth",
+        "Inguri Mouth"
+      ],
+      "latitude_deg": 42.3906944444,
+      "longitude_deg": 41.5595,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q504388",
+        "entity_url": "https://www.wikidata.org/wiki/Q504388",
+        "parent_feature": "Enguri River",
+        "coordinate_role": "river_mouth"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    },
+    {
+      "id": "caucasus.river-mouth.rioni",
+      "kind": "river-mouth",
+      "name": "Rioni River Mouth",
+      "aliases": [
+        "Rioni Mouth"
+      ],
+      "latitude_deg": 42.1841666667,
+      "longitude_deg": 41.6361111111,
+      "elevation_m": null,
+      "metadata": {
+        "wikidata_id": "Q203409",
+        "entity_url": "https://www.wikidata.org/wiki/Q203409",
+        "parent_feature": "Rioni River",
+        "coordinate_role": "river_mouth"
+      },
+      "source_id": "wikidata-operational-landmarks"
+    }
+  ]
+}
