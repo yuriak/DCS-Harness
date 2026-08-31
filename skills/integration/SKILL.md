@@ -1,6 +1,6 @@
 ---
 name: integration
-description: Guide DCS Harness integration work across Geo, Telemetry, DCS-gRPC, mission-side DCS Lua, MIST, MOOSE, pydcs, and dcs-lua-definitions. Use when choosing an integration layer, tracing an external API to simulator behavior, writing or reviewing Eval snippets, or determining which pinned upstream source is authoritative. Do not use for routine start, stop, health, recovery, or operator procedures; use the operation skill for those.
+description: Guide DCS Harness integration work across Geo, Telemetry, DCS-gRPC, mission-side DCS Lua, MIST, MOOSE, pydcs, offline .miz mission authoring and validation, and dcs-lua-definitions. Use when choosing an integration layer, tracing an external API to simulator behavior, preparing or inspecting a mission before launch, writing or reviewing Eval snippets, or determining which pinned upstream source is authoritative. Do not use for routine start, stop, health, recovery, or operator procedures; use the operation skill for those.
 ---
 
 # DCS Harness integration
@@ -24,8 +24,10 @@ External agent
                       -> MIST, if the mission loaded it
                       -> MOOSE, if the mission loaded it
 
-Offline mission authoring
-  -> pydcs -> .miz files
+Offline mission authoring and validation
+  -> pydcs -> candidate .miz
+  -> Human DCS Mission Editor review -> final .miz
+  -> pydcs read-only final validation
 
 Static Lua authoring help
   -> dcs-lua-definitions
@@ -50,7 +52,10 @@ Do not treat these layers as interchangeable. In particular, pydcs and dcs-lua-d
    table-oriented helpers when the mission loads MIST.
 7. Use MOOSE for complex, persistent, object-oriented mission orchestration
    when the mission loads MOOSE.
-8. Use pydcs to create or modify mission files before DCS loads them.
+8. Use pydcs for pre-mission `.miz` creation, structured edits, static mission
+   inspection, and read-only validation of the Human-approved final mission
+   before DCS loads it. Read the mission-authoring reference before deciding
+   what belongs offline versus in live directing.
 9. Use dcs-lua-definitions for editor assistance and API discovery, then
    verify behavior against the running DCS version and pinned runtime sources.
 
@@ -73,6 +78,8 @@ Record a version-sensitive conclusion rather than silently generalizing it.
 1. State whether the task is live runtime control, mission-side scripting, offline mission authoring, or static API research.
 2. Identify the boundary crossed and the data shape on each side.
 3. Read the relevant focused reference below.
+   For offline mission authoring or final `.miz` validation, read the
+   mission-authoring reference before inspecting the pinned pydcs source.
 4. Check whether Geo or Telemetry already provides the maintained factual
    operation before designing a new adapter.
 5. Inspect the exact pinned source paths named by that reference before asserting an API signature.
@@ -112,6 +119,7 @@ Use a narrow Eval probe to learn uncertain mission behavior. If the same action 
 - [MIST](references/mist.md): utility functions and mission databases.
 - [MOOSE](references/moose.md): object-oriented mission orchestration.
 - [pydcs](references/pydcs.md): offline mission creation and editing.
+- [`.miz` and mission authoring](references/miz-and-mission-authoring.md): hybrid mission design, Human review, final validation, Mission Contract, and live preflight boundaries.
 - [dcs-lua-definitions](references/dcs-lua-definitions.md): static Lua language-server definitions.
 - [Coordinates and units](references/coordinates-and-units.md): world/route axes, geographic conversion, headings, and canonical units.
 - [World entities](references/world-entities.md): country/coalition, physical identity, airbases, and session boundaries.

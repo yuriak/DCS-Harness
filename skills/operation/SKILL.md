@@ -43,6 +43,25 @@ truth. Use typed queries or focused Lua observations for current state.
 Avoid long deterministic scripts that stop observing while a live mission
 changes.
 
+## Live preflight for an authored mission
+
+A Human-approved Mission Contract or final `.miz` provides expected initial
+facts, not live truth. After DCS loads the mission, establish the current
+session, theatre, and player state; probe the exact required startup-library
+symbols; observe expected background groups; and check telemetry, events, and
+logs before treating the mission as ready. Verify any critical continuing
+route or task over an appropriate observation window.
+
+An authored reserve definition does not establish that the reserve is active
+or committed. Confirm its current state through live observation and test a
+required activation path narrowly before broad scenario progression.
+
+The final `.miz` remains a Human-owned mission file. Routine live operation
+does not authorize rewriting it. Use the
+[integration mission-authoring reference](../integration/references/miz-and-mission-authoring.md)
+for offline construction, Human review, final read-only validation, and the
+task-local Mission Contract boundary.
+
 ## Select a capability
 
 Prefer **grpc** when a current protobuf service already exposes the required

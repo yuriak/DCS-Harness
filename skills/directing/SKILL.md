@@ -76,6 +76,26 @@ Avoid infinite spawning, arbitrary punishment, instant replacement of every loss
 
 Keep any temporary resource accounting in the agent's task context or authorized runtime workspace. Do not invent a Harness campaign-memory schema or encode scenario strategy into core plugins.
 
+## Direct a hybrid authored and dynamic world
+
+A running mission can contain pre-authored background forces, authored dormant
+reserves, and live dynamically created assets at the same time. Classify them
+by directing semantics rather than by whether their definition exists in the
+mission file.
+
+- Background forces that should already be operating can be authored offline
+  and remain available for live retasking, withdrawal, or redirection.
+- Authored does not mean committed. A dormant reserve definition remains
+  uncommitted until the directing loop decides to activate or allocate it and
+  live evidence confirms the result.
+- Use dynamic creation when an asset's appearance is itself an emergent
+  decision or consequence. Do not recreate stable authored background forces
+  merely to demonstrate spawning.
+
+The `.miz` can establish the mission substrate and initial resource pool, but
+must not pre-script narrative branches, escalation timing, or player-responsive
+decisions that belong in the live loop.
+
 ## Handle session changes
 
 A new DCS-gRPC session means a new current battle context. Stop relying on prior live object identities, event cursors, mission-loaded libraries, and unverified unit state.
@@ -102,9 +122,11 @@ Do not put CAP, SEAD, CAS, reinforcement, escalation, pacing, spawning, campaign
 
 If state is ambiguous, observe again or make a low-impact probe. If an action fails, inspect its structured error and relevant diagnostics before retrying. Avoid duplicate material actions when the first result is unknown.
 
-If the initial world depends on dynamic assets, do not declare it ready merely
-because a helper loaded or spawn call returned success. Verify the smallest
-critical dynamic path over time before scaling out. If repeated low-level
+Do not declare a critical initial path ready merely because its definition
+exists, a helper loaded, or a spawn call returned success. Whether the path is
+pre-authored or dynamically created, verify its sustained runtime effect over
+an appropriate window. For a dynamic critical path, additionally verify spawn
+and any framework registration before scaling out. If repeated low-level
 recovery attempts do not establish the required behavior, pause scenario
 progression and switch to controlled diagnosis or abort rather than consuming
 the directing session with open-ended integration debugging.
@@ -114,7 +136,7 @@ Pause escalation and ask for human direction when a required choice would materi
 ## Related skills
 
 - Use [operation](../operation/SKILL.md) for discovery, lifecycle, telemetry health, events, logs, Lua execution, runtime plugins, errors, and recovery.
-- Use [integration](../integration/SKILL.md) to select Geo, Telemetry, DCS-gRPC, native DCS Lua, MIST, MOOSE, pydcs, static definitions, and cold documentation.
+- Use [integration](../integration/SKILL.md) for `.miz` authoring and validation boundaries and to select Geo, Telemetry, DCS-gRPC, native DCS Lua, MIST, MOOSE, pydcs, static definitions, and cold documentation.
 
 ## Evolution rule
 

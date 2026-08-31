@@ -10,16 +10,45 @@ Use pydcs before DCS loads a mission. It is not a live simulator API and does no
 
 - Generating a new .miz mission from structured inputs.
 - Applying deterministic edits to an existing mission package.
-- Creating coalitions, groups, units, routes, triggers, and mission metadata supported by the pinned library.
+- Creating or inspecting coalitions, countries, groups, units, routes, tasks,
+  triggers, actions, resources, and mission metadata supported by the pinned
+  library.
+- Authoring player/client slots, background order of battle, or dormant
+  reserves where the exact pinned models support the required form.
+- Inspecting bullseyes, weather, warehouses, airbase state, and other static
+  mission structures where current source and tests establish support.
+- Reloading a Human-approved final `.miz` for read-only invariant validation.
 - Looking up static aircraft, vehicle, ship, weapon, country, and terrain definitions.
 - Building reproducible mission fixtures for integration or HIL testing.
 
-Check exact support and serialization behavior at the pinned revision. DCS mission format changes can outpace an older library release.
+Check exact support, load/save symmetry, and serialization behavior at the
+pinned revision before assuming any item above. DCS mission format changes can
+outpace an older library release, and static support does not establish
+Mission Editor round-trip or live DCS behavior.
+
+At the pinned revision, `Action.__repr__` renders a translatable `DoScript`
+parameter with `getValueDictByKey(...)`. A DCS 2.9.29.27278 MT HIL nevertheless
+observed Mission Editor rewriting the compiled action to execute the literal
+dictionary key while leaving the dictionary value and pydcs model readable.
+Do not validate critical inline scripts only through the action object or
+dictionary; inspect compiled trigger text and verify the live effect. The same
+round trip did preserve and execute the tested resource-backed
+`DoScriptFile` actions. A corrected follow-up also verified the exact small
+startup marker as a third embedded `DoScriptFile` after Mission Editor save and
+in a fresh live DCS session.
+
+For decisions about what should be authored versus left dynamic, the
+candidate/Human/final lifecycle, background/reserve/emergent semantics,
+Mission Contract, and live preflight, read
+[`miz-and-mission-authoring.md`](miz-and-mission-authoring.md). This reference
+owns pydcs technical boundaries; the mission-authoring reference owns the
+workflow and directing doctrine.
 
 ## Offline boundary
 
 ~~~text
-Python and pydcs -> mission data -> saved .miz -> human loads mission in DCS
+Python and pydcs -> candidate .miz -> Human Mission Editor -> final .miz
+final .miz -> pydcs read-only validation -> Human loads mission in DCS
 ~~~
 
 Saving a .miz file does not update an already running mission. Live observations and actions belong to Harness, DCS-gRPC, or mission-side Lua.
@@ -31,11 +60,18 @@ Generated mission changes should be written to an explicitly chosen workspace ou
 Start with:
 
 - third_party/pydcs/dcs/mission.py
+- third_party/pydcs/dcs/action.py
+- third_party/pydcs/dcs/triggers.py
+- third_party/pydcs/dcs/coalition.py
 - third_party/pydcs/dcs/unitgroup.py
+- third_party/pydcs/dcs/weather.py
+- third_party/pydcs/dcs/terrain/terrain.py
 - third_party/pydcs/dcs/terrain
 - third_party/pydcs/dcs/planes.py
 - third_party/pydcs/dcs/vehicles.py
-- third_party/pydcs/tests
+- third_party/pydcs/tests/test_mission.py
+- third_party/pydcs/tests/test_triggers.py
+- third_party/pydcs/tests/test_weather.py
 - third_party/pydcs/README.md
 
 Mission.load_file and Mission.save are central entry points in the pinned mission model. Inspect the concrete class and tests for required arguments, generated identifiers, archive handling, and persistence semantics.
@@ -44,7 +80,13 @@ Mission.load_file and Mission.save are central entry points in the pinned missio
 
 - Separate pure mission construction from filesystem output.
 - Make generated inputs and random seeds explicit when reproducibility matters.
-- Validate output by loading it again and, for material changes, by controlled DCS testing.
+- Write candidates to an explicitly chosen workspace path. After Human review,
+  reload the approved final file without overwriting it and validate only
+  mission-critical invariants.
+- Validate output by loading it again and, for material behavior, by controlled DCS testing.
+- For critical trigger scripts, distinguish preserved localized text from the
+  executable expression in `mission.trig.actions`; validate both before live
+  testing.
 - Do not treat static catalogs as proof that an asset is installed or usable in the player's DCS configuration.
 - Do not couple live agent decisions to a stale offline mission model.
 
