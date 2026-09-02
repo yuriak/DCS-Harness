@@ -29,7 +29,7 @@ upstream content.
 | MIST documentation | upstream/community wiki linked by pinned README | `http://wiki.hoggit.us/view/Mission_Scripting_Tools_Documentation` | none | legacy URL in pinned README | redistribution not assessed | helper discovery; confirm current location and pinned implementation | community/upstream docs below pinned source |
 | pydcs documentation | upstream project docs | `http://dcs.readthedocs.org/en/latest` | none | current site; may not match pin | redistribution not assessed | authoring concepts before checking pinned code/tests | matching official docs when revision-compatible |
 | DCS-gRPC project documentation | upstream project README/docs | `https://github.com/DCS-gRPC/rust-server` | `third_party/dcs-grpc/README.md` | pinned README plus current upstream | repository license applies to pinned copy; website redistribution not separately assessed | installation context and client concepts; use proto/source for exact contracts | matching official docs below Harness contracts/pinned source |
-| Hoggit Simulator Scripting Engine Documentation | community wiki | `https://wiki.hoggitworld.com/view/Simulator_Scripting_Engine_Documentation` | none | live community content | redistribution license not confirmed for this project | broad DCS Lua discovery and terminology | community reference; never simulator truth by itself |
+| Hoggit Simulator Scripting Engine Documentation | community wiki | `https://wiki.hoggitworld.com/view/Simulator_Scripting_Engine_Documentation` | `research/hoggit-sse-cache/pages/` when the optional ignored snapshot has been built | live community content; local retrieval/revision metadata is in `research/hoggit-sse-cache/manifest.json` | redistribution license not confirmed for this project | broad DCS Lua, mission-authoring, AI task, option, function, and event discovery | community reference; never simulator truth by itself |
 | Eagle Dynamics documentation index | vendor documentation | `https://www.digitalcombatsimulator.com/en/downloads/documentation/` | none | current vendor site | redistribution not assessed | locate current vendor manuals and scripting material | vendor docs below supported live behavior/pinned contracts |
 
 URLs in this table are discovery locations, not reachability guarantees. If a
@@ -45,8 +45,9 @@ requirements have been established.
 
 If a local cache is needed:
 
-1. keep it under the private `dev/` repository or another explicitly ignored
-   local third-party cache;
+1. keep generated article content under the public working tree's ignored
+   `research/hoggit-sse-cache/` directory so repository-root Agents can search
+   it without reading private development material;
 2. record source URLs, retrieval date, scope, and any observed license notice;
 3. fetch only the material required for the current investigation when
    practical;
@@ -54,5 +55,9 @@ If a local cache is needed:
    Harness contracts, and pinned source;
 5. do not create a public sync script or redistribute the dump without a
    separate license and update-policy decision.
+
+The cache is optional. If present, search `research/hoggit-sse-cache/pages/`
+with bounded local text queries and inspect its manifest for provenance. Its
+absence must not break Harness, its skills, or normal repository operation.
 
 This policy must not block Geo, Telemetry, or focused integration work.

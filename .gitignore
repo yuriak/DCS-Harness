@@ -9,6 +9,12 @@ dev_AGENTS.md
 # Private development overlay (independent repository, never a public submodule)
 /dev/
 
+# Optional generated Hoggit SSE cold-knowledge snapshot. The fetch tooling is
+# maintained privately; fetched community documentation is never committed.
+/research/hoggit-sse-cache/
+/research/.hoggit-sse-cache-build-*/
+/research/.hoggit-sse-cache-backup-*/
+
 # Local HIL coordination files
 /codex_checklist.md
 /human_checklist.md

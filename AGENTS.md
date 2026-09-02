@@ -69,6 +69,8 @@ Prefer a typed RPC when it already exposes the required capability because its i
 
 For technical API and ecosystem authority, use the integration skill's stricter source order. Inspect current Harness source and tests for Harness behavior, generated protobuf descriptors and pinned DCS-gRPC source for RPC contracts, and pinned third_party source for upstream libraries.
 
+An optional ignored Hoggit SSE community-documentation cache may exist at `research/hoggit-sse-cache/pages/`. Use it only for focused DCS scripting and mission-authoring discovery when maintained references do not answer the question. It remains below current Harness contracts, pinned source, and live evidence in authority; consult the integration skill's cold-source guidance before relying on it.
+
 ## Lifecycle model
 
 The three continuity horizons are distinct:

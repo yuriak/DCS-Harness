@@ -82,10 +82,14 @@ Record a version-sensitive conclusion rather than silently generalizing it.
    mission-authoring reference before inspecting the pinned pydcs source.
 4. Check whether Geo or Telemetry already provides the maintained factual
    operation before designing a new adapter.
-5. Inspect the exact pinned source paths named by that reference before asserting an API signature.
-6. For Eval, keep Lua snippets small and return JSON-safe facts rather than framework objects.
-7. Confirm optional mission libraries are actually loaded; repository submodules do not load them into DCS.
-8. Test the narrowest possible behavior, preserving the human-authorization boundaries described by the operation skill.
+5. If the maintained references do not answer a DCS scripting or
+   mission-authoring discovery question, search the optional ignored Hoggit SSE
+   cache described by the cold-source registry before broad Web or source
+   archaeology. Treat its result as a lead, not an exact contract.
+6. Inspect the exact pinned source paths named by that reference before asserting an API signature.
+7. For Eval, keep Lua snippets small and return JSON-safe facts rather than framework objects.
+8. Confirm optional mission libraries are actually loaded; repository submodules do not load them into DCS.
+9. Test the narrowest possible behavior, preserving the human-authorization boundaries described by the operation skill.
 
 When the focused local references cannot answer an interface question and Web
 search is available, consult upstream official documentation or a credible
@@ -125,7 +129,7 @@ Use a narrow Eval probe to learn uncertain mission behavior. If the same action 
 - [World entities](references/world-entities.md): country/coalition, physical identity, airbases, and session boundaries.
 - [Dynamic aircraft and tasking](references/dynamic-aircraft-and-tasking.md): spawn readiness, routes, controller tasks, orbit shape, and sustained verification.
 - [Observation and verification](references/observation-and-verification.md): evidence semantics, time-series verification, and recovery discipline.
-- [Cold source registry](references/cold-sources.md): pinned sources, upstream/community discovery, license status, and Hoggit cache policy.
+- [Cold source registry](references/cold-sources.md): pinned sources, upstream/community discovery, license status, and optional ignored Hoggit cache location/policy.
 
 For setup, process lifecycle, health checks, recovery, logs, and operator safety, use [the operation skill](../operation/SKILL.md).
 
