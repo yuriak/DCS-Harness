@@ -40,6 +40,7 @@ class LoadedPlugin:
     spec: PluginSpec
     module: ModuleType
     invoke: Callable[[Any, str, Mapping[str, Any]], Any]
+    fast_report: Callable[[Any, Any], Mapping[str, Any]] | None
     runtime: PluginRuntimeKind
     autostart: bool
     start: Callable[[Any, Any], Any] | None
@@ -143,6 +144,7 @@ class PluginResolver:
             code = compile(source, str(spec.path), "exec")
             exec(code, module.__dict__)
             invoke = self._validate_module(module, spec)
+            fast_report = self._fast_report_contract(module, spec)
             runtime, autostart, start, stop = self._runtime_contract(module, spec)
         except HarnessError:
             sys.modules.pop(module_key, None)
@@ -158,6 +160,7 @@ class PluginResolver:
             spec=spec,
             module=module,
             invoke=invoke,
+            fast_report=fast_report,
             runtime=runtime,
             autostart=autostart,
             start=start,
@@ -205,6 +208,19 @@ class PluginResolver:
                 f"Plugin {spec.name!r} describe attribute must be callable.",
             )
         return invoke
+
+    @staticmethod
+    def _fast_report_contract(
+        module: ModuleType,
+        spec: PluginSpec,
+    ) -> Callable[[Any, Any], Mapping[str, Any]] | None:
+        fast_report = getattr(module, "fast_report", None)
+        if fast_report is not None and not callable(fast_report):
+            raise HarnessError(
+                ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                f"Plugin {spec.name!r} fast_report attribute must be callable.",
+            )
+        return fast_report
 
     @staticmethod
     def _runtime_contract(
@@ -269,6 +285,7 @@ class PluginResolver:
                 "source": spec.source.value,
                 "runtime": loaded.runtime.value,
                 "autostart": loaded.autostart,
+                "has_fast_report": loaded.fast_report is not None,
                 "commands": None,
             }
         try:
@@ -290,6 +307,7 @@ class PluginResolver:
         value["source"] = spec.source.value
         value["runtime"] = loaded.runtime.value
         value["autostart"] = loaded.autostart
+        value["has_fast_report"] = loaded.fast_report is not None
         return value
 
     def discover(self) -> dict[str, list[str]]:

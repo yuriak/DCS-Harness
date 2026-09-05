@@ -76,17 +76,18 @@ An optional ignored Hoggit SSE community-documentation cache may exist at `resea
 The three continuity horizons are distinct:
 
 ~~~text
-DCS process epoch          -> logs
-DCS-gRPC mission/session   -> events + telemetry
-future campaign continuity -> memory
+DCS process epoch                     -> logs
+DCS-gRPC mission/session              -> events + telemetry
+Agent-selected task/campaign context  -> file memory
 ~~~
 
 - A new DCS-gRPC session is a new current battle context. Re-establish live objects, player state, mission-loaded libraries, and relevant assumptions.
 - Event ledgers and telemetry contexts are isolated by session and are not automatically mixed into current queries.
 - Logs normally describe diagnostics from the current DCS process epoch.
 - A Harness restart can occur within either upstream epoch; do not equate Harness process lifetime with DCS or mission lifetime.
-- runtime/memory/ is only a reserved placeholder for future campaign-level continuity across missions and sessions.
-- Do not invent a memory schema, service, retention policy, embedding system, or plugin during normal work.
+- runtime/memory/ is an Agent-owned persistent file workspace for selective task/mission context and possible future campaign continuity.
+- Memory is below current live evidence and the current Mission Contract in authority. After a new session, treat old current-world facts as historical or stale until reverified.
+- No built-in memory architecture exists. Do not create a database, service, retrieval API, automatic summarizer, retention policy, embedding system, or plugin without new repeated evidence.
 
 ## Runtime ownership
 
@@ -98,7 +99,7 @@ future campaign continuity -> memory
 | runtime/events/ | Harness-owned per-session factual ledgers. |
 | runtime/telemetry/ | Harness-owned optional per-session factual archives. |
 | runtime/logs/ | Harness-owned diagnostics, mirrors, and lifecycle logs. |
-| runtime/memory/ | Reserved placeholder; no architecture yet. |
+| runtime/memory/ | Agent-owned selective task/mission memory files; no built-in architecture. |
 
 Do not directly edit Harness-owned event/telemetry databases or log mirrors during normal tasks. Query them through the appropriate capability. Preserve unrelated local runtime artifacts.
 

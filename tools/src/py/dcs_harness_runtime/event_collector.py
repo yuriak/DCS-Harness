@@ -10,8 +10,10 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
+from .event_normalization import normalize_combat_event
 from .event_store import EventStore, EventStoreCatalog
 from .logging_utils import LifecycleLogger
+from .native_combat import NativeCombatObserver
 from .result import ErrorCode, HarnessError
 
 
@@ -48,6 +50,7 @@ class EventCollector:
         self._reconnects = 0
         self._malformed_events = 0
         self._ignored_events = 0
+        self.native_combat = NativeCombatObserver(context, stores, logger)
 
     def run(self, stop_event: threading.Event) -> None:
         self._set(collector="running")
@@ -103,12 +106,29 @@ class EventCollector:
                 pass
 
     def status(self) -> dict[str, Any]:
+        native_status = self.native_combat.status()
         with self._lock:
+            grpc_session_id = self._session_id
+            grpc_store = self._store
+            native_session_id, native_store = self.native_combat.session_store()
+            if native_session_id is not None and native_session_id != grpc_session_id:
+                session_id = native_session_id
+                store = native_store
+            else:
+                session_id = grpc_session_id or native_session_id
+                store = grpc_store or native_store
+            observed_times = [
+                value
+                for value in (self._last_event_at, native_status["last_event_at"])
+                if value is not None
+            ]
+            last_event_at = max(observed_times, default=None)
             value = {
                 "collector": self._collector,
                 "stream": self._stream,
-                "session_id": self._session_id,
-                "last_event_at": self._last_event_at,
+                "session_id": session_id,
+                "grpc_session_id": grpc_session_id,
+                "last_event_at": last_event_at,
                 "last_error": (
                     dict(self._last_error) if self._last_error else None
                 ),
@@ -116,16 +136,22 @@ class EventCollector:
                 "malformed_events": self._malformed_events,
                 "ignored_events": self._ignored_events,
                 "store_path": (
-                    self.stores.display_path(self._store) if self._store else None
+                    self.stores.display_path(store) if store else None
                 ),
             }
-            store = self._store
         value["stored_events"] = store.count() if store else 0
+        value["native_combat"] = native_status
         return value
 
     def current_store(self) -> EventStore:
         with self._lock:
-            store = self._store
+            grpc_session_id = self._session_id
+            grpc_store = self._store
+        native_session_id, native_store = self.native_combat.session_store()
+        if native_session_id is not None and native_session_id != grpc_session_id:
+            store = native_store
+        else:
+            store = grpc_store or native_store
         if store is None:
             raise HarnessError(
                 ErrorCode.CAPABILITY_UNAVAILABLE,
@@ -169,6 +195,12 @@ class EventCollector:
                         break
                     try:
                         event_type, mission_time, payload = self._event_value(event)
+                        normalized = normalize_combat_event(
+                            event_type,
+                            mission_time,
+                            payload,
+                            source="grpc",
+                        )
                     except Exception as error:
                         self._record_malformed(error)
                         continue
@@ -182,6 +214,8 @@ class EventCollector:
                         mission_time=mission_time,
                         event_type=event_type,
                         payload=payload,
+                        source="grpc",
+                        normalized=normalized,
                     )
                     self._set(last_event_at=datetime.now(timezone.utc).isoformat())
         finally:

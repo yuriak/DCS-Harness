@@ -122,6 +122,23 @@ class TelemetryMemoryTests(unittest.TestCase):
         )
         self.assertEqual([item["mission_time"] for item in history["samples"]], [10, 20])
 
+    def test_fast_summary_is_compact_and_current(self) -> None:
+        store = memory()
+        player = sample(1)
+        player["player_name"] = "Pilot"
+        stored = store.append(snapshot("one", 10, [player, sample(2)]))
+
+        summary = store.fast_summary()
+
+        self.assertEqual(summary["session_id"], "one")
+        self.assertEqual(summary["snapshot_id"], stored["snapshot_id"])
+        self.assertEqual(summary["mission_time"], 10)
+        self.assertEqual(summary["unit_count"], 2)
+        self.assertEqual(summary["group_count"], 1)
+        self.assertEqual(summary["player_count"], 1)
+        self.assertEqual(summary["players"][0]["player_name"], "Pilot")
+        self.assertNotIn("position", summary["players"][0])
+
     def test_queries_require_current_data_and_narrow_history_target(self) -> None:
         store = memory()
         for operation in (

@@ -40,13 +40,21 @@ The minimal current contract is:
 - PLUGIN_API_VERSION matching the supported plugin API;
 - callable invoke(context, command, args);
 - optional callable describe().
+- optional callable fast_report(context, runtime).
+
+`fast_report` returns a small JSON-safe mapping for the explicit aggregated
+status path. It must be bounded and side-effect free apart from a small number
+of short observations. Do not return histories, unit dumps, descriptor lists,
+or raw log text. The `runtime` argument is a plugin handle only for a running
+resident plugin and `None` for a stateless plugin. The aggregator does not call
+or start a resident plugin that is not running.
 
 Do not copy a contract from this summary when precision matters. Inspect
 tools/src/py/dcs_harness_runtime/plugin_api.py and a small current built-in.
 
 Use the built-in plugins validate command on the exact name or allowed path
 before depending on a new plugin. Use plugins describe to confirm its current
-surface.
+surface and whether it exposes a fast report.
 
 ## Lifetime choice
 

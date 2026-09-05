@@ -72,6 +72,52 @@ def invoke(context, command, args):
 """
 
 
+FAST_STATELESS_PLUGIN = """\
+PLUGIN_NAME = "fast"
+PLUGIN_API_VERSION = 1
+
+def invoke(context, command, args):
+    return {"invoked": True}
+
+def fast_report(context, runtime):
+    return {"health": "ready", "session_id": "42", "mission_time": 12.5}
+"""
+
+
+BROKEN_REPORT_PLUGIN = """\
+PLUGIN_NAME = "broken"
+PLUGIN_API_VERSION = 1
+
+def invoke(context, command, args):
+    return {}
+
+def fast_report(context, runtime):
+    raise RuntimeError("report boom")
+"""
+
+
+def fast_resident_plugin(start_marker: Path) -> str:
+    return f'''\
+from pathlib import Path
+
+PLUGIN_NAME = "resident"
+PLUGIN_API_VERSION = 1
+PLUGIN_RUNTIME = "resident"
+PLUGIN_AUTOSTART = True
+START_MARKER = Path({str(start_marker)!r})
+
+def start(context, runtime):
+    START_MARKER.write_text("started")
+    runtime.state = {{"value": 7}}
+
+def invoke(context, command, args):
+    return {{"invoked": True}}
+
+def fast_report(context, runtime):
+    return {{"health": "ready", "value": runtime.state["value"]}}
+'''
+
+
 class RuntimeRepository:
     def __init__(self, root: Path) -> None:
         self.root = root
@@ -93,6 +139,113 @@ class RuntimeRepository:
 
 
 class ResidentLifecycleTests(unittest.TestCase):
+    def test_fast_status_isolates_failures_and_does_not_start_residents(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = RuntimeRepository(Path(temporary))
+            marker = repository.root / "started"
+            repository.write_builtin(
+                "grpc", FAST_STATELESS_PLUGIN.replace('"fast"', '"grpc"')
+            )
+            repository.write_builtin("stateless", STATELESS_PLUGIN)
+            repository.write_builtin("broken", BROKEN_REPORT_PLUGIN)
+            repository.write_runtime("import_bad", "raise RuntimeError('import boom')\n")
+            repository.write_runtime(
+                "json_bad",
+                "PLUGIN_NAME = 'json_bad'\nPLUGIN_API_VERSION = 1\n"
+                "def invoke(c, x, a): return {}\n"
+                "def fast_report(c, r): return {'bad': {object()}}\n",
+            )
+            repository.write_builtin("resident", fast_resident_plugin(marker))
+            repository.write_builtin("conflict", STATELESS_PLUGIN.replace('"stateless"', '"conflict"'))
+            repository.write_runtime("conflict", STATELESS_PLUGIN.replace('"stateless"', '"conflict"'))
+
+            with CapabilityRuntime(repository.root, mode="direct") as runtime:
+                status = runtime.fast_status()
+
+            self.assertEqual(status["health"], "degraded")
+            self.assertEqual(status["session_id"], "42")
+            self.assertEqual(status["mission_time"], 12.5)
+            self.assertEqual(status["plugins"]["grpc"]["report_status"], "ok")
+            self.assertEqual(
+                status["plugins"]["stateless"]["report_status"],
+                "not_reportable",
+            )
+            self.assertEqual(status["plugins"]["broken"]["report_status"], "error")
+            self.assertEqual(
+                status["plugins"]["import_bad"]["report_status"], "error"
+            )
+            self.assertEqual(status["plugins"]["json_bad"]["report_status"], "error")
+            self.assertEqual(
+                status["plugins"]["resident"]["report_status"], "not_started"
+            )
+            self.assertEqual(
+                status["plugins"]["conflict"]["report_status"], "conflict"
+            )
+            self.assertFalse(marker.exists())
+
+    def test_running_resident_fast_report_receives_runtime_handle(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = RuntimeRepository(Path(temporary))
+            marker = repository.root / "started"
+            repository.write_builtin("resident", fast_resident_plugin(marker))
+            with CapabilityRuntime(repository.root, mode="resident") as runtime:
+                runtime.autostart(("resident",))
+                status = runtime.fast_status()
+
+            report = status["plugins"]["resident"]
+            self.assertEqual(report["report_status"], "ok")
+            self.assertEqual(report["lifecycle_state"], "running")
+            self.assertEqual(report["data"]["value"], 7)
+            self.assertTrue(marker.exists())
+            stopped = runtime.fast_status()["plugins"]["resident"]
+            self.assertEqual(stopped["report_status"], "stopped")
+
+    def test_failed_resident_report_exposes_lifecycle_without_calling_report(self) -> None:
+        content = """\
+PLUGIN_NAME = "failed"
+PLUGIN_API_VERSION = 1
+PLUGIN_RUNTIME = "resident"
+
+def start(context, runtime):
+    raise RuntimeError("start boom")
+
+def invoke(context, command, args):
+    return {}
+
+def fast_report(context, runtime):
+    raise AssertionError("must not be called")
+"""
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = RuntimeRepository(Path(temporary))
+            repository.write_builtin("failed", content)
+            with CapabilityRuntime(repository.root, mode="resident") as runtime:
+                result = runtime.dispatch("failed", "anything")
+                status = runtime.fast_status()
+
+        self.assertFalse(result.ok)
+        report = status["plugins"]["failed"]
+        self.assertEqual(report["report_status"], "failed")
+        self.assertEqual(report["error"]["code"], "CAPABILITY_UNAVAILABLE")
+
+    def test_fast_status_warns_on_conflicting_current_facts(self) -> None:
+        second = FAST_STATELESS_PLUGIN.replace('"fast"', '"telemetry"').replace(
+            '"42"', '"99"'
+        ).replace("12.5", "80.0")
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = RuntimeRepository(Path(temporary))
+            repository.write_builtin(
+                "lua", FAST_STATELESS_PLUGIN.replace('"fast"', '"lua"')
+            )
+            repository.write_builtin("telemetry", second)
+            with CapabilityRuntime(repository.root, mode="direct") as runtime:
+                status = runtime.fast_status()
+
+        codes = {warning["code"] for warning in status["warnings"]}
+        self.assertIn("CONFLICTING_SESSION_ID", codes)
+        self.assertIn("MISSION_TIME_DIVERGENCE", codes)
+        self.assertEqual(status["session_id"], "99")
+        self.assertEqual(status["mission_time"], 80.0)
+
     def test_resident_start_once_and_graceful_stop(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository = RuntimeRepository(Path(temporary))

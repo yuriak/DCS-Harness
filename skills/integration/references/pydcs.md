@@ -90,6 +90,37 @@ Mission.load_file and Mission.save are central entry points in the pinned missio
 - Do not treat static catalogs as proof that an asset is installed or usable in the player's DCS configuration.
 - Do not couple live agent decisions to a stale offline mission model.
 
+## Generated aircraft/loadout catalog
+
+The reviewed base catalog at `tools/data/catalog/aircraft.json` is generated
+by `tools/build_aircraft_catalog.py` from the pinned fixed-wing, helicopter,
+task, pylon, and weapon definitions. It records the exact pydcs revision,
+generator version and timestamp, aircraft category/flyability/task facts,
+global store metadata, and per-pylon compatibility. Run the builder with
+`--check` when the pinned pydcs revision or generator changes.
+
+The base catalog deliberately does not scan the player's DCS installation and
+does not include local `UnitPayloads` presets. A declared pylon for which the
+pinned generated class exposes no matching `PylonN` definition is retained
+with `definition_available=false` and no invented compatible stores. Catalog
+presence establishes only a pinned static definition; it does not establish
+module ownership, installation, Mission Editor acceptance, or live usability.
+
+Use the stateless `catalog` capability for bounded discovery rather than
+opening the full generated JSON: search or show the exact aircraft type, list
+pylon summaries, query compatible stores, inspect preset-enrichment status,
+and validate a proposed pylon/CLSID mapping. Similar names can identify
+different upstream types—for example, the pinned definitions distinguish
+`F-16C bl.50` from `F-16C_50`—so preserve the returned exact `type_id` instead
+of merging results by punctuation or remembered display name. Validation
+checks static compatibility only; it does not calculate aircraft performance
+or recommend a mission loadout.
+
+For the catalog-to-`FlyingUnit.load_pylon` data-shape conversion and the
+candidate/Human-final read-only comparison workflow, use
+[aircraft payload authoring](payload-authoring.md). Keep the selected plan and
+its validation evidence task-local.
+
 ## Use another layer when
 
 - The question concerns current mission state: use a typed live operation.

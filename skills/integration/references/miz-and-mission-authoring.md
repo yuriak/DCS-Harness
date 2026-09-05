@@ -57,6 +57,13 @@ Keep narrative pacing, escalation timing, tactical response, commitment of
 uncommitted resources, player-responsive decisions, and genuinely emergent
 forces in the live directing loop.
 
+Before placing initial forces, use
+[mission planning and route semantics](mission-planning-and-routes.md) to build
+the task-local spatial picture, assign operational meaning to material route
+points, select coalition bullseyes deliberately, and check background-force
+coherence. Use [persistent air tasks](persistent-air-tasks.md) for continuing
+CAP, AWACS, tanker, support orbit, escort, and RTB construction/acceptance.
+
 ## Hybrid mission model
 
 **[project convention]** Classify assets by directing semantics, not by whether
@@ -137,6 +144,12 @@ rewriting it. Validate only invariants material to the current mission, report
 warnings and accepted Human modifications separately from failures, and record
 a final content hash when identity matters.
 
+For a reusable task-local structural checker, copy and adapt the
+[Mission Authoring Validator v2 asset](mission-authoring-validation.md). It can
+check every ground-unit position and formation extent, aircraft payload/fuel/
+route/start/base/task fields, explicit geography relations, and ordered
+resource-backed startup actions without creating a universal mission schema.
+
 Offline inspection can establish that definitions exist, such as:
 
 - theatre and coalition-country structure;
@@ -148,6 +161,29 @@ Offline inspection can establish that definitions exist, such as:
 It cannot establish that a script loaded in DCS, a unit is alive, an AI route
 persists, a reserve activates correctly, or a task has the intended tactical
 effect. A pydcs save/load round trip is not live verification.
+
+### Multi-unit ground geometry
+
+**[project convention]** Treat every ground-unit position as an explicit
+authoring input. Appending a unit with `Mission.vehicle(...)` leaves that unit
+at the pinned pydcs default local `(0, 0)` until the author assigns a position;
+`group.add_unit(...)` does not derive a useful formation from the lead unit.
+
+For a task-local authorer, copy and adapt
+[`../assets/mission-authoring/formation_geometry.py`](../assets/mission-authoring/formation_geometry.py).
+Supply one `(x/east, y/north)` offset per unit, including the lead, and choose
+the offsets from the current mission's intent. Before saving and again after
+read-only reload, validate finite coordinates, suspicious local-world origin,
+distance from the intended anchor, pairwise separation when material, and the
+formation bounding radius. Set the distance thresholds in the task's Mission
+Contract; the template intentionally contains no universal battery layout or
+role doctrine.
+
+The helper validates the complete placement request before changing the group.
+Its validator returns a JSON-safe report suitable for inclusion in a task-local
+candidate/final validation result. A clean structural report establishes only
+authored geometry, not terrain suitability, line of sight, tactical quality,
+or live DCS behavior.
 
 For critical `Do Script` actions, also inspect the compiled
 `mission.trig.actions` expression in the archive. Resolving the action's text

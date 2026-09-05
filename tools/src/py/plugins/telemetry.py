@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from dcs_harness_runtime.plugin_api import PLUGIN_API_VERSION as SUPPORTED_API_VERSION
 from dcs_harness_runtime.result import ErrorCode, HarnessError
+from dcs_harness_runtime.reporting import age_seconds
 from dcs_harness_runtime.telemetry_collector import TelemetryCollector, TelemetryConfig
 
 
@@ -118,6 +119,38 @@ def invoke(context: Any, command: str, args: Mapping[str, Any]) -> Any:
         _reject_unknown(args, FILTER_ARGUMENTS - {"fields"})
         return collector.memory.list_units(args)
     raise AssertionError("validated telemetry command was not dispatched")
+
+
+def fast_report(context: Any, runtime: Any) -> Mapping[str, Any]:
+    collector = runtime.state
+    if not isinstance(collector, TelemetryCollector):
+        return {"health": "unavailable", "reason": "collector_unavailable"}
+    status = collector.status()
+    summary = collector.memory.fast_summary()
+    if not status["enabled"]:
+        health = "unavailable"
+    elif status["collector"] == "running" and status["last_successful_sample"]:
+        health = "ready"
+    else:
+        health = "degraded"
+    return {
+        "health": health,
+        "collector": status["collector"],
+        "enabled": status["enabled"],
+        "session_id": status["session_id"],
+        "snapshot_id": summary["snapshot_id"],
+        "mission_time": summary["mission_time"],
+        "captured_at": summary["captured_at"],
+        "sample_age_seconds": age_seconds(status["last_successful_sample"]),
+        "unit_count": summary["unit_count"],
+        "group_count": summary["group_count"],
+        "player_count": summary["player_count"],
+        "players": summary["players"],
+        "players_truncated": summary["players_truncated"],
+        "partial": summary["partial"],
+        "consecutive_failures": status["consecutive_failures"],
+        "last_error": status["last_error"],
+    }
 
 
 def _collector(context: Any) -> tuple[TelemetryCollector, Any]:

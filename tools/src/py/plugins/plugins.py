@@ -32,6 +32,10 @@ def describe() -> dict[str, Any]:
                 "description": "Validate one plugin name or allowed plugin path.",
                 "arguments": {"target": {"type": "string", "required": True}},
             },
+            "status": {
+                "description": "Aggregate bounded fast reports without starting plugins.",
+                "arguments": {},
+            },
         },
     }
 
@@ -74,8 +78,24 @@ def invoke(context: Any, command: str, args: Mapping[str, Any]) -> Any:
             "source": spec.source.value,
             "path": str(Path(spec.path)),
             "has_describe": callable(getattr(loaded.module, "describe", None)),
+            "has_fast_report": loaded.fast_report is not None,
         }
+    if command == "status":
+        return runtime.fast_status()
     raise HarnessError(
         ErrorCode.COMMAND_NOT_FOUND,
         f"Plugin {PLUGIN_NAME!r} has no command {command!r}.",
     )
+
+
+def fast_report(context: Any, runtime: Any) -> Mapping[str, Any]:
+    capability_runtime = context.runtime
+    if capability_runtime is None:
+        return {"health": "unavailable", "reason": "runtime_unavailable"}
+    status = capability_runtime.status()
+    return {
+        "health": "ready" if status["state"] == "running" else "unavailable",
+        "mode": status["mode"],
+        "state": status["state"],
+        "resident_plugins": status["plugins"],
+    }

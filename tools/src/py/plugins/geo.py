@@ -31,6 +31,29 @@ PLUGIN_NAME = "geo"
 PLUGIN_API_VERSION = SUPPORTED_API_VERSION
 
 
+def fast_report(context: Any, runtime: Any) -> Mapping[str, Any]:
+    maps = GeoCatalogRegistry(context.repository_root).maps()
+    compact_maps = [
+        {
+            key: item.get(key)
+            for key in ("id", "name", "data_version", "location_count", "kinds")
+        }
+        for item in maps
+    ]
+    live_configured = False
+    try:
+        live_configured = context.require_grpc_client_endpoint().eval_enabled
+    except HarnessError:
+        pass
+    return {
+        "health": "ready" if maps else "degraded",
+        "catalog_schema_version": CATALOG_SCHEMA_VERSION,
+        "map_count": len(maps),
+        "maps": compact_maps,
+        "live_conversion_configured": live_configured,
+    }
+
+
 def describe() -> dict[str, Any]:
     geographic = {
         "type": "object",

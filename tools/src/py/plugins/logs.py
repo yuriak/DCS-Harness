@@ -14,6 +14,7 @@ from dcs_harness_runtime.log_collector import (
 )
 from dcs_harness_runtime.plugin_api import PLUGIN_API_VERSION as SUPPORTED_API_VERSION
 from dcs_harness_runtime.result import ErrorCode, HarnessError
+from dcs_harness_runtime.reporting import age_seconds
 
 
 PLUGIN_NAME = "logs"
@@ -100,6 +101,36 @@ def invoke(context: Any, command: str, args: Mapping[str, Any]) -> Any:
         values = follower.search(query, limit)
         return {"source": source, "query": query, "lines": values, "count": len(values)}
     raise AssertionError("validated logs command was not dispatched")
+
+
+def fast_report(context: Any, runtime: Any) -> Mapping[str, Any]:
+    collector = runtime.state
+    if not isinstance(collector, DcsLogCollector):
+        return {"health": "unavailable", "reason": "collector_unavailable"}
+    status = collector.status()
+    sources = {
+        name: {
+            "state": source["state"],
+            "epoch": source["mirror_path"],
+            "mirror_path": source["mirror_path"],
+            "last_update_at": source["last_update_at"],
+            "last_update_age_seconds": age_seconds(source["last_update_at"]),
+            "last_error": source["last_error"],
+        }
+        for name, source in status["sources"].items()
+    }
+    following = sum(source["state"] == "following" for source in sources.values())
+    health = (
+        "ready"
+        if status["collector"] == "running" and following
+        else "degraded" if status["collector"] == "running" else "unavailable"
+    )
+    return {
+        "health": health,
+        "collector": status["collector"],
+        "following_source_count": following,
+        "sources": sources,
+    }
 
 
 def _source_paths(context: Any) -> dict[str, Path | None]:

@@ -1,21 +1,25 @@
 from __future__ import annotations
 
 import json
+import io
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SETUP_SOURCE = REPOSITORY_ROOT / "tools" / "src" / "py"
 sys.path.insert(0, str(SETUP_SOURCE))
 
-from dcs_harness import _running_in_runtime_venv  # noqa: E402
+from dcs_harness import _normalize_target, _running_in_runtime_venv, main  # noqa: E402
 from dcs_harness_runtime.plugin_api import PluginResolver, PluginSource  # noqa: E402
 from dcs_harness_runtime.resident import CapabilityRuntime  # noqa: E402
 from dcs_harness_runtime.result import ErrorCode, HarnessError  # noqa: E402
+from dcs_harness_runtime.result import ResultEnvelope  # noqa: E402
 
 
 VALID_PLUGIN = """\
@@ -193,6 +197,24 @@ class PluginContractTests(unittest.TestCase):
         self.assertEqual(metadata["name"], "alpha")
         self.assertEqual(metadata["source"], "runtime")
 
+    def test_optional_fast_report_is_discoverable(self) -> None:
+        content = VALID_PLUGIN.format(name="alpha") + "\ndef fast_report(c, r): return {'health': 'ready'}\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = RuntimeRepository(Path(temporary))
+            repository.write_runtime("alpha", content)
+            resolver = PluginResolver(repository.root)
+            loaded = resolver.load(resolver.resolve("alpha"))
+            metadata = resolver.describe_loaded(loaded)
+        self.assertTrue(metadata["has_fast_report"])
+
+    def test_non_callable_fast_report_is_rejected(self) -> None:
+        error = self._load_error(
+            "PLUGIN_NAME = 'broken'\nPLUGIN_API_VERSION = 1\n"
+            "fast_report = {}\n"
+            "def invoke(c, x, a): return {}\n"
+        )
+        self.assertEqual(error.code, ErrorCode.PLUGIN_API_INCOMPATIBLE)
+
 
 class DispatcherTests(unittest.TestCase):
     def test_success_envelope_and_lifecycle_without_payload(self) -> None:
@@ -292,6 +314,33 @@ class CliTests(unittest.TestCase):
         self.assertFalse(
             _running_in_runtime_venv(runtime_python, REPOSITORY_ROOT / "not-the-venv")
         )
+
+    def test_status_shorthand_targets_plugins_status(self) -> None:
+        self.assertEqual(_normalize_target("status", "", []), ("plugins", "status"))
+        self.assertEqual(
+            _normalize_target("status", "unexpected", []),
+            ("status", "unexpected"),
+        )
+
+    @patch("dcs_harness.invoke_request")
+    def test_status_shorthand_emits_canonical_json(self, invoke) -> None:
+        invoke.return_value = ResultEnvelope.success(
+            request_id="request",
+            plugin="plugins",
+            command="status",
+            data={"health": "ready"},
+            meta={"backend": "direct", "duration_ms": 1.0},
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            return_code = main(["--backend", "direct", "status"])
+        payload = json.loads(output.getvalue())
+        self.assertEqual(return_code, 0)
+        self.assertEqual(payload["plugin"], "plugins")
+        self.assertEqual(payload["command"], "status")
+        self.assertEqual(payload["data"]["health"], "ready")
+        self.assertEqual(invoke.call_args.kwargs["plugin"], "plugins")
+        self.assertEqual(invoke.call_args.kwargs["command"], "status")
 
 
 if __name__ == "__main__":

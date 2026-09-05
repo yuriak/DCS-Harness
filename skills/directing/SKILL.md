@@ -7,6 +7,29 @@ description: Direct a live DCS mission or battlefield as a dynamic mission direc
 
 Direct the battle as a live feedback loop. Create meaningful situations, observe what actually happens, and adapt without taking agency away from the player.
 
+## Operating modes
+
+Maintain one explicit mode and change it when the Human/simulation context
+changes:
+
+- **PREPARATION** builds and verifies the substrate. Source inspection,
+  authoring, controlled experiments, and preflight belong here.
+- **LIVE** begins when the Human starts the actual flight or scenario. Its
+  priority is battle awareness, player interaction, the immediate directing
+  decision, and effect verification; technical research is last.
+- **DIAGNOSTIC** pauses normal directing after a critical capability failure,
+  invalid substrate, or repeated failure of the same bounded path. Tell the
+  pilot in DCS when appropriate, preserve evidence, diagnose deliberately, and
+  complete preflight again before returning to LIVE.
+
+During LIVE, do not disappear into open-ended source or API archaeology. For a
+technical blocker, use fast status, focused hot/known-issue knowledge, and one
+bounded probe, then return to current battle observation. Before a second deep
+research pass, re-check player state, combat changes, pending F10 input, and
+mission time. As a default directing discipline, refresh material state within
+roughly 30 seconds in active combat and 60 seconds in quiet/transit periods;
+adapt to scenario pace rather than treating these as hard real-time SLAs.
+
 ## Live loop
 
 Repeat this loop throughout the active session:
@@ -68,13 +91,45 @@ Update the next decision from the observed result. Player success, failure, dela
 - Give the player time and information appropriate to the scenario before demanding another response.
 - Use uncertainty honestly; do not claim the world contains facts that have not been observed or established.
 
+## Communicate with the pilot inside DCS
+
+If a message is addressed to the pilot rather than the experiment operator,
+deliver it through the in-game F10 capability. Use Human chat for permission,
+Mission Editor work, technical failure, pause/abort coordination, and
+experiment discussion; use in-game text and choices for tasking, warnings,
+intelligence, ROE, acknowledgements, and mission narrative.
+
+Prefer player/group scope over mission-wide messages when the intended audience
+is known. Keep dynamic choices bounded and remove them when completed or stale.
+Treat a player selection as a factual input to the next reasoning cycle, not as
+permission to run a pre-scripted branch without re-observing. Acknowledge the
+selection after handling it so pending input remains meaningful. Recreate only
+the menus still needed after a new session; never replay an old directive
+automatically.
+
 ## Use plausible, finite resources
 
 Treat forces, fuel, weapons, readiness, timing, and access to information as finite scenario resources. New units or effects should have a plausible role and origin within the current task.
 
 Avoid infinite spawning, arbitrary punishment, instant replacement of every loss, and unbounded escalation. Difficulty should emerge from the situation, not from silently changing the rules whenever the player succeeds.
 
-Keep any temporary resource accounting in the agent's task context or authorized runtime workspace. Do not invent a Harness campaign-memory schema or encode scenario strategy into core plugins.
+Keep selective resource commitments and other material task context in
+`runtime/memory/MEMORY.md` when continuity is useful. This is Agent-owned file
+memory, not a Harness ledger or permission to invent a campaign-memory service,
+schema, or core plugin. Continue to keep scenario strategy out of core code.
+
+## Maintain selective memory
+
+Use the [operation memory guidance](../operation/references/memory.md) for a
+small current-task record. Update it on material changes such as a commitment,
+important loss, player decision, phase change, or unresolved uncertainty—not
+on every observation cycle. Preserve confirmed, correlated, and unknown
+outcomes distinctly rather than converting ambiguity into narrative fact.
+
+Current live evidence and the current Mission Contract outrank memory. After a
+new DCS-gRPC session, treat prior current-world entries as historical/stale
+until reverified, reacquire physical identities, and never replay an old task or
+player directive merely because it remains in the file.
 
 ## Direct a hybrid authored and dynamic world
 

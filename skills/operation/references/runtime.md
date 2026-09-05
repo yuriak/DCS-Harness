@@ -11,8 +11,10 @@ its context only for that invocation.
 
 A resident plugin owns state and runtime-managed background tasks. It requires
 the resident server. The current autostart resident plugins are **events**,
-**logs**, and **telemetry**; they start once for the server lifetime and stop
-during graceful shutdown.
+**f10**, **logs**, and **telemetry**; they start once for the server lifetime
+and stop during graceful shutdown. F10 autostart creates local state and
+monitors the session/event ledger; it does not create a mission menu until an
+explicit init operation.
 
 Built-in plugins already started in a resident runtime are immutable until that
 server restarts. Runtime plugins may be reloaded only under the current plugin
@@ -39,25 +41,28 @@ DCS process log epoch
 -> logs
 
 DCS-gRPC mission/session
--> events + telemetry
+-> events + telemetry + f10
 
-future campaign continuity
--> memory
+Agent-selected task/campaign context
+-> file memory
 ~~~
 
 Events uses one SQLite ledger per numeric DCS-gRPC session. Telemetry rotates
 current memory per session and can optionally use one SQLite archive per
 session. A mission reload, new mission, or DCS restart that changes the
-session ID changes both current contexts. Normal commands do not merge
-historical sessions.
+session ID changes all three current contexts. F10 discards local menu handles
+and player-input state instead of replaying old interactions. Normal commands
+do not merge historical sessions.
 
 Logs uses timestamped raw mirrors for DCS and DCS-gRPC source-log epochs.
 Source replacement, recreation, or truncation begins a new current mirror.
 Normal log commands do not search older epochs.
 
-runtime/memory/ is currently an empty placeholder reserved for future
-campaign-level continuity across missions and sessions. Do not define a
-schema, commands, retention policy, embedding system, or memory plugin yet.
+runtime/memory/ is an Agent-owned persistent file workspace for selective
+task/mission context and possible future campaign continuity. It is not a
+Harness ledger or capability. See [memory](memory.md); do not define a built-in
+schema, database, commands, retrieval API, automatic summarizer, retention
+policy, embedding system, or memory plugin without new repeated evidence.
 
 ## Directory ownership
 
@@ -66,6 +71,7 @@ Agent-owned:
 - runtime/workspace/
 - task-local files in runtime/plugins/py/
 - task-local files in runtime/plugins/lua/
+- selective files in runtime/memory/
 
 Harness-owned:
 

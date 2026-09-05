@@ -77,12 +77,14 @@ Record a version-sensitive conclusion rather than silently generalizing it.
 
 1. State whether the task is live runtime control, mission-side scripting, offline mission authoring, or static API research.
 2. Identify the boundary crossed and the data shape on each side.
-3. Read the relevant focused reference below.
+3. Read the relevant focused reference below, then check the known-issues
+   registry before investigating an unexpected third-party behavior.
    For offline mission authoring or final `.miz` validation, read the
    mission-authoring reference before inspecting the pinned pydcs source.
-4. Check whether Geo or Telemetry already provides the maintained factual
-   operation before designing a new adapter.
-5. If the maintained references do not answer a DCS scripting or
+4. Check whether Geo, Telemetry, another maintained capability, or a current
+   plugin `describe`/status report already provides the needed operation or
+   diagnostic before designing a new adapter.
+5. If the maintained references and known-issues registry do not answer a DCS scripting or
    mission-authoring discovery question, search the optional ignored Hoggit SSE
    cache described by the cold-source registry before broad Web or source
    archaeology. Treat its result as a lead, not an exact contract.
@@ -118,12 +120,18 @@ Use a narrow Eval probe to learn uncertain mission behavior. If the same action 
 
 ## References
 
+- [Task index](references/task-index.md): short problem-to-reference routing for common integration work.
+- [Third-party known issues](references/third-party-known-issues.md): version-bounded symptoms, evidence, and safe workarounds that should not be rediscovered during live work.
 - [DCS-gRPC](references/dcs-grpc.md): typed live RPCs, event streams, sessions, and Eval.
 - [DCS Lua](references/dcs-lua.md): mission-side Lua execution and the Eval boundary.
 - [MIST](references/mist.md): utility functions and mission databases.
 - [MOOSE](references/moose.md): object-oriented mission orchestration.
-- [pydcs](references/pydcs.md): offline mission creation and editing.
-- [`.miz` and mission authoring](references/miz-and-mission-authoring.md): hybrid mission design, Human review, final validation, Mission Contract, and live preflight boundaries.
+- [pydcs](references/pydcs.md): offline mission creation/editing and the generated aircraft/loadout catalog boundary.
+- [Aircraft payload authoring](references/payload-authoring.md): catalog-to-pydcs application and candidate/final CLSID/settings validation.
+- [`.miz` and mission authoring](references/miz-and-mission-authoring.md): hybrid mission design, Human review, explicit multi-unit geometry, final validation, Mission Contract, and live preflight boundaries.
+- [Mission authoring validation](references/mission-authoring-validation.md): task-local structural checks for ground, aircraft, geography, and startup invariants.
+- [Mission planning and route semantics](references/mission-planning-and-routes.md): scenario geography, meaningful waypoints, coalition bullseyes, and background-force coherence.
+- [Persistent air tasks](references/persistent-air-tasks.md): pinned CAP/AWACS/tanker/orbit/escort/RTB authoring surfaces and sustained live acceptance.
 - [dcs-lua-definitions](references/dcs-lua-definitions.md): static Lua language-server definitions.
 - [Coordinates and units](references/coordinates-and-units.md): world/route axes, geographic conversion, headings, and canonical units.
 - [World entities](references/world-entities.md): country/coalition, physical identity, airbases, and session boundaries.

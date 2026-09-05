@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -16,7 +18,7 @@ from .plugin_api import LoadedPlugin, PluginCache, PluginResolver, PluginRuntime
 from .result import ErrorCode, HarnessError, ResultEnvelope
 
 
-AUTOSTART_BUILTINS: tuple[str, ...] = ("events", "logs", "telemetry")
+AUTOSTART_BUILTINS: tuple[str, ...] = ("events", "f10", "logs", "telemetry")
 DEFAULT_TASK_JOIN_TIMEOUT = 5.0
 
 
@@ -226,6 +228,253 @@ class CapabilityRuntime:
                 "state": self._lifecycle_state,
                 "plugins": plugins,
             }
+
+    def fast_status(self) -> dict[str, Any]:
+        """Aggregate bounded plugin reports without starting resident plugins."""
+        started = time.monotonic()
+        timestamp_utc = datetime.now(timezone.utc).isoformat()
+        discovery = self.resolver.discover()
+        conflicts = set(discovery["conflicts"])
+        names = sorted(
+            set(discovery["builtin"])
+            | set(discovery["runtime"])
+            | conflicts
+        )
+        reports: dict[str, dict[str, Any]] = {}
+        for name in names:
+            if name in conflicts:
+                reports[name] = {
+                    "report_status": "conflict",
+                    "error": {
+                        "code": ErrorCode.PLUGIN_NAME_CONFLICT.value,
+                        "message": "A runtime plugin conflicts with a built-in plugin.",
+                    },
+                    "duration_ms": 0.0,
+                }
+                continue
+            reports[name] = self._fast_plugin_report(name)
+
+        warnings = self._fast_status_warnings(reports)
+        session_id = self._first_report_value(
+            reports, "session_id", ("telemetry", "events", "grpc", "lua", "geo")
+        )
+        theatre = self._first_report_value(
+            reports, "theatre", ("grpc", "lua", "geo", "telemetry", "events")
+        )
+        mission_time = self._first_report_value(
+            reports, "mission_time", ("telemetry", "lua", "events", "grpc", "geo")
+        )
+        warnings.extend(self._fact_conflict_warnings(reports))
+        return {
+            "timestamp_utc": timestamp_utc,
+            "health": (
+                "unavailable"
+                if self._lifecycle_state != "running"
+                or (session_id is None and mission_time is None)
+                else "degraded" if warnings else "ready"
+            ),
+            "runtime": {"mode": self.mode, "state": self._lifecycle_state},
+            "session_id": session_id,
+            "theatre": theatre,
+            "mission_time": mission_time,
+            "plugins": reports,
+            "warnings": warnings,
+            "duration_ms": round((time.monotonic() - started) * 1000.0, 3),
+        }
+
+    def _fast_plugin_report(self, name: str) -> dict[str, Any]:
+        started = time.monotonic()
+        source = "unknown"
+        loaded: LoadedPlugin | None = None
+        try:
+            spec = self.resolver.resolve(name)
+            source = spec.source.value
+            loaded, load_status = self.cache.load(spec)
+            common: dict[str, Any] = {
+                "source": source,
+                "runtime": loaded.runtime.value,
+                "autostart": loaded.autostart,
+                "plugin_load": load_status,
+            }
+            if loaded.fast_report is None:
+                common["report_status"] = "not_reportable"
+                return self._finish_fast_report(common, started)
+
+            handle: PluginRuntimeHandle | None = None
+            if loaded.runtime is PluginRuntimeKind.RESIDENT:
+                with self._lock:
+                    instance = self._plugins.get(name)
+                    if instance is None:
+                        common.update(
+                            report_status="not_started",
+                            lifecycle_state="not_started",
+                        )
+                        return self._finish_fast_report(common, started)
+                    common["lifecycle_state"] = instance.lifecycle_state
+                    if instance.lifecycle_state != "running":
+                        common["report_status"] = instance.lifecycle_state
+                        if instance.last_error:
+                            common["error"] = {
+                                "code": ErrorCode.CAPABILITY_UNAVAILABLE.value,
+                                "message": f"Resident plugin {name!r} is {instance.lifecycle_state}.",
+                                "details": {"last_error": dict(instance.last_error)},
+                            }
+                        return self._finish_fast_report(common, started)
+                    handle = PluginRuntimeHandle(self, name)
+
+            value = loaded.fast_report(self.context, handle)
+            if not isinstance(value, Mapping):
+                raise HarnessError(
+                    ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                    f"Plugin {name!r} fast_report() must return a mapping.",
+                )
+            data = dict(value)
+            try:
+                json.dumps(data, ensure_ascii=False)
+            except (TypeError, ValueError) as error:
+                raise HarnessError(
+                    ErrorCode.PLUGIN_API_INCOMPATIBLE,
+                    f"Plugin {name!r} fast_report() must return JSON-safe data.",
+                    details={"exception_type": type(error).__name__},
+                ) from error
+            common.update(report_status="ok", data=data)
+            return self._finish_fast_report(common, started)
+        except HarnessError as error:
+            value = {
+                "source": source,
+                "runtime": loaded.runtime.value if loaded else None,
+                "report_status": "error",
+                "error": {
+                    "code": error.code.value,
+                    "message": error.message,
+                    **({"details": error.details} if error.details else {}),
+                },
+            }
+            return self._finish_fast_report(value, started)
+        except Exception as error:
+            value = {
+                "source": source,
+                "runtime": loaded.runtime.value if loaded else None,
+                "report_status": "error",
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR.value,
+                    "message": f"Plugin {name!r} fast report failed unexpectedly.",
+                    "details": {"exception_type": type(error).__name__},
+                },
+            }
+            return self._finish_fast_report(value, started)
+
+    @staticmethod
+    def _finish_fast_report(
+        value: dict[str, Any], started: float
+    ) -> dict[str, Any]:
+        value["duration_ms"] = round((time.monotonic() - started) * 1000.0, 3)
+        return value
+
+    @staticmethod
+    def _first_report_value(
+        reports: Mapping[str, Mapping[str, Any]],
+        field: str,
+        preferred_plugins: Sequence[str],
+    ) -> Any:
+        for name in preferred_plugins:
+            entry = reports.get(name)
+            if not entry or entry.get("report_status") != "ok":
+                continue
+            data = entry.get("data")
+            if isinstance(data, Mapping) and data.get(field) is not None:
+                return data[field]
+        return None
+
+    @staticmethod
+    def _fast_status_warnings(
+        reports: Mapping[str, Mapping[str, Any]],
+    ) -> list[dict[str, str]]:
+        warnings: list[dict[str, str]] = []
+        for name, entry in reports.items():
+            status = entry.get("report_status")
+            if status in {"error", "failed", "conflict"}:
+                warnings.append(
+                    {
+                        "plugin": name,
+                        "code": f"PLUGIN_{str(status).upper()}",
+                        "message": f"Plugin {name!r} status is {status}.",
+                    }
+                )
+                continue
+            if status == "not_started" and entry.get("autostart"):
+                warnings.append(
+                    {
+                        "plugin": name,
+                        "code": "PLUGIN_NOT_STARTED",
+                        "message": f"Autostart plugin {name!r} is not running.",
+                    }
+                )
+                continue
+            data = entry.get("data")
+            if (
+                status == "ok"
+                and isinstance(data, Mapping)
+                and data.get("health") in {"degraded", "unavailable"}
+            ):
+                warnings.append(
+                    {
+                        "plugin": name,
+                        "code": f"PLUGIN_{str(data['health']).upper()}",
+                        "message": f"Plugin {name!r} reports {data['health']} health.",
+                    }
+                )
+        return warnings
+
+    @staticmethod
+    def _fact_conflict_warnings(
+        reports: Mapping[str, Mapping[str, Any]],
+    ) -> list[dict[str, str]]:
+        facts: dict[str, list[tuple[str, Any]]] = {
+            "session_id": [],
+            "theatre": [],
+            "mission_time": [],
+        }
+        for name, entry in reports.items():
+            if entry.get("report_status") != "ok":
+                continue
+            data = entry.get("data")
+            if not isinstance(data, Mapping):
+                continue
+            for field in facts:
+                if data.get(field) is not None:
+                    facts[field].append((name, data[field]))
+
+        warnings: list[dict[str, str]] = []
+        for field in ("session_id", "theatre"):
+            distinct = {str(value) for _, value in facts[field]}
+            if len(distinct) > 1:
+                warnings.append(
+                    {
+                        "plugin": "runtime",
+                        "code": f"CONFLICTING_{field.upper()}",
+                        "message": f"Successful plugin reports disagree on {field}.",
+                    }
+                )
+        # Event mission time is the chronology time of the newest event, not a
+        # current clock observation. Compare only reports that sample current
+        # state so a quiet event stream does not look inconsistent.
+        mission_times = [
+            float(value)
+            for name, value in facts["mission_time"]
+            if name in {"telemetry", "lua"}
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ]
+        if mission_times and max(mission_times) - min(mission_times) > 30.0:
+            warnings.append(
+                {
+                    "plugin": "runtime",
+                    "code": "MISSION_TIME_DIVERGENCE",
+                    "message": "Successful plugin mission-time observations differ by more than 30 seconds.",
+                }
+            )
+        return warnings
 
     def close(self) -> None:
         with self._lock:

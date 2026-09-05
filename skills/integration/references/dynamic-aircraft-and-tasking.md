@@ -3,6 +3,12 @@
 Use this reference before dynamically spawning aircraft, assigning routes or
 controller tasks, or declaring a persistent AI behavior ready.
 
+For offline CAP, AWACS, tanker, escort, and landing authoring surfaces plus the
+shared sustained-acceptance matrix, read
+[persistent air tasks](persistent-air-tasks.md). For scenario geography,
+bullseyes, and route-point intent, read
+[mission planning and route semantics](mission-planning-and-routes.md).
+
 ## Select and verify the runtime layer
 
 **[project convention]** Use the narrowest layer that owns the required

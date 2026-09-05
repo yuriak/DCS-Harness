@@ -104,6 +104,14 @@ def _parse_plugin_args(namespace: argparse.Namespace) -> dict[str, Any]:
     return value
 
 
+def _normalize_target(
+    plugin: str, command: str, plugin_args: Sequence[str]
+) -> tuple[str, str]:
+    if plugin == "status" and not command and not plugin_args:
+        return "plugins", "status"
+    return plugin, command
+
+
 def invoke_request(
     repository_root: Path,
     *,
@@ -160,6 +168,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             from dcs_harness_runtime.server import run_server
 
             return run_server(repository_root, port=namespace.port)
+        plugin, command = _normalize_target(plugin, command, namespace.plugin_args)
         if not plugin or not command:
             raise HarnessError(
                 ErrorCode.INVALID_ARGUMENT,

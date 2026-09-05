@@ -222,6 +222,36 @@ class EventStoreTests(unittest.TestCase):
                 with self.subTest(limit=invalid), self.assertRaises(HarnessError):
                     reopened.query(limit=invalid)
 
+    def test_query_after_id_pages_oldest_first_without_skipping(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = EventStore(Path(temporary) / "events.sqlite")
+            store.initialize()
+            with store.writer() as writer:
+                for index, event_type in enumerate(
+                    ("birth", "mission_command", "group_command", "mission_command"),
+                    start=1,
+                ):
+                    writer.append(
+                        session_id="101",
+                        mission_time=index,
+                        event_type=event_type,
+                        payload={"time": index, event_type: {}},
+                    )
+
+            first = store.query_after_id(
+                event_types=["mission_command", "group_command"],
+                after_id=0,
+                limit=2,
+            )
+            second = store.query_after_id(
+                event_types=["mission_command", "group_command"],
+                after_id=first[-1]["id"],
+                limit=2,
+            )
+
+        self.assertEqual([value["mission_time"] for value in first], [2.0, 3.0])
+        self.assertEqual([value["mission_time"] for value in second], [4.0])
+
     def test_background_writer_and_concurrent_queries(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             store = EventStore(Path(temporary) / "events.sqlite")
@@ -459,15 +489,17 @@ class EventsPluginIntegrationTests(unittest.TestCase):
             query = runtime.dispatch(
                 "events", "query", {"event_type": "mission_start"}
             )
+            combat = runtime.dispatch("events", "combat", {"limit": 5})
             self.assertTrue(status.ok)
             self.assertEqual(status.data["stored_events"], 1)
             self.assertEqual(status.data["session_id"], "77")
             self.assertTrue(status.data["store_path"].endswith("_77.sqlite"))
             self.assertEqual(recent.data["events"][0]["event_type"], "mission_start")
             self.assertEqual(query.data["count"], 1)
-            self.assertEqual(
-                len(runtime.background.status("events")), 1
-            )
+            self.assertTrue(combat.ok)
+            self.assertEqual(combat.data["count"], 0)
+            self.assertIn("not a confirmed kill", combat.data["attribution_note"])
+            self.assertEqual(len(runtime.background.status("events")), 2)
 
             rejected = runtime.dispatch("events", "query", {"sql": "DROP TABLE events"})
             self.assertFalse(rejected.ok)

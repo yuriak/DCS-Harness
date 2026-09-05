@@ -7,10 +7,14 @@ from typing import Any, Mapping
 from dcs_harness_runtime.grpc_support import DEFAULT_TIMEOUT_SECONDS, GrpcSupport
 from dcs_harness_runtime.plugin_api import PLUGIN_API_VERSION as SUPPORTED_API_VERSION
 from dcs_harness_runtime.result import ErrorCode, HarnessError
+from dcs_harness_runtime.reporting import unavailable_error
 
 
 PLUGIN_NAME = "grpc"
 PLUGIN_API_VERSION = SUPPORTED_API_VERSION
+FAST_REPORT_TIMEOUT_SECONDS = 1.0
+MISSION_SERVICE = "dcs.mission.v0.MissionService"
+WORLD_SERVICE = "dcs.world.v0.WorldService"
 
 
 def describe() -> dict[str, Any]:
@@ -65,6 +69,47 @@ def invoke(context: Any, command: str, args: Mapping[str, Any]) -> Any:
         timeout = args.get("timeout", DEFAULT_TIMEOUT_SECONDS)
         return support.call(service, method, request, timeout=timeout)
     raise AssertionError("validated gRPC command was not dispatched")
+
+
+def fast_report(context: Any, runtime: Any) -> Mapping[str, Any]:
+    value: dict[str, Any] = {"health": "unavailable", "reachable": False}
+    try:
+        endpoint = context.require_grpc_client_endpoint()
+        value["endpoint"] = {
+            "client_host": endpoint.client_host,
+            "port": endpoint.port,
+            "eval_enabled": endpoint.eval_enabled,
+        }
+        support = GrpcSupport(context)
+        session = support.call(
+            MISSION_SERVICE, "GetSessionId", {}, timeout=FAST_REPORT_TIMEOUT_SECONDS
+        )
+        theatre = support.call(
+            WORLD_SERVICE, "GetTheatre", {}, timeout=FAST_REPORT_TIMEOUT_SECONDS
+        )
+        session_id = session.get("session_id") if isinstance(session, Mapping) else None
+        theatre_name = theatre.get("theatre") if isinstance(theatre, Mapping) else None
+        if isinstance(session_id, bool) or not isinstance(session_id, (str, int)):
+            raise HarnessError(
+                ErrorCode.GRPC_CALL_FAILED,
+                "DCS-gRPC returned malformed session metadata.",
+                details={"reason": "MALFORMED_SESSION_ID"},
+            )
+        if not isinstance(theatre_name, str) or not theatre_name.strip():
+            raise HarnessError(
+                ErrorCode.GRPC_CALL_FAILED,
+                "DCS-gRPC returned malformed theatre metadata.",
+                details={"reason": "MALFORMED_THEATRE"},
+            )
+        value.update(
+            health="ready",
+            reachable=True,
+            session_id=str(session_id),
+            theatre=theatre_name,
+        )
+    except Exception as error:
+        value["error"] = unavailable_error(error, "DCS-gRPC probe failed.")
+    return value
 
 
 def _service_and_method(

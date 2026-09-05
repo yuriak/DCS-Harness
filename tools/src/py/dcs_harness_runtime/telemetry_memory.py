@@ -15,6 +15,7 @@ from .result import ErrorCode, HarnessError
 DEFAULT_QUERY_LIMIT = 200
 MAX_QUERY_LIMIT = 1000
 MAX_SNAPSHOT_LIMIT = 500
+MAX_FAST_REPORT_PLAYERS = 16
 COALITION_NAMES = frozenset({"NEUTRAL", "RED", "BLUE"})
 CATEGORY_NAMES = frozenset({"AIRPLANE", "HELICOPTER", "GROUND", "SHIP", "TRAIN"})
 SAMPLE_FIELDS = frozenset(
@@ -139,6 +140,53 @@ class TelemetryMemory:
                 "max_entities": self.max_entities,
                 "latest_snapshot_id": latest.get("snapshot_id") if latest else None,
                 "latest_mission_time": latest.get("mission_time") if latest else None,
+            }
+
+    def fast_summary(self) -> dict[str, Any]:
+        """Return bounded situational identity data from the latest snapshot."""
+        with self._lock:
+            latest = self._snapshots[-1][1] if self._snapshots else None
+            if latest is None:
+                return {
+                    "session_id": self._session_id,
+                    "snapshot_id": None,
+                    "mission_time": None,
+                    "captured_at": None,
+                    "unit_count": 0,
+                    "group_count": 0,
+                    "player_count": 0,
+                    "players": [],
+                    "players_truncated": False,
+                    "partial": None,
+                }
+            units = latest.get("units", [])
+            players = [sample for sample in units if sample.get("player_name")]
+            compact_players = [
+                {
+                    "player_name": sample.get("player_name"),
+                    "instance_id": sample.get("instance_id"),
+                    "unit": copy.deepcopy(sample.get("unit")),
+                    "group": copy.deepcopy(sample.get("group")),
+                    "in_air": sample.get("in_air"),
+                }
+                for sample in players[:MAX_FAST_REPORT_PLAYERS]
+            ]
+            group_keys = {
+                (group.get("id"), group.get("name"))
+                for sample in units
+                if isinstance((group := sample.get("group")), Mapping)
+            }
+            return {
+                "session_id": latest.get("session_id"),
+                "snapshot_id": latest.get("snapshot_id"),
+                "mission_time": latest.get("mission_time"),
+                "captured_at": latest.get("captured_at"),
+                "unit_count": len(units),
+                "group_count": len(group_keys),
+                "player_count": len(players),
+                "players": compact_players,
+                "players_truncated": len(players) > len(compact_players),
+                "partial": latest.get("partial"),
             }
 
     def latest(self, args: Mapping[str, Any]) -> dict[str, Any]:

@@ -17,6 +17,13 @@ MissionService includes live mission operations such as event streaming and sess
 - third_party/dcs-grpc/protos/dcs/mission/v0/mission.proto
 - third_party/dcs-grpc/protos/dcs/common/v0/common.proto
 
+The pinned MissionService also exposes typed mission/coalition/group F10 menu
+CRUD and emits corresponding structured command events. TriggerService exposes
+scoped in-game text, and TimerService supplies mission time. The built-in F10
+capability narrows these into Harness-owned current-session operations; use the
+[F10 operation reference](../../operation/references/f10.md) rather than
+manually inventing callbacks.
+
 ### CustomService.Eval
 
 Eval executes Lua in DCS and is the escape hatch for capabilities not exposed by a typed RPC. Its contract is defined in:
